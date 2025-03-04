@@ -1,1 +1,2 @@
-# Face_recognition
+#id = student
+#password = student123
