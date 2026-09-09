@@ -1,17 +1,73 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Register</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - VisionPass</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h2>Register</h2>
-    <form method="post">
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required><br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
-        <button type="submit">Register</button>
-    </form>
-    <a href="{{ url_for('login') }}">Already have an account? Login here.</a>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-icon">⚡</div>
+      <span>VisionPass AI</span>
+    </a>
+    <div class="nav-links">
+      <a href="/login" class="btn btn-secondary" style="width: auto; padding: 0.6rem 1.2rem;">Login</a>
+    </div>
+  </nav>
+
+  <main class="main-wrapper">
+    <div class="glass-card" style="max-width: 520px;">
+      <h2 class="title-gradient" style="font-size: 1.8rem; margin-bottom: 0.3rem;">Create Account</h2>
+      <p class="subtitle">Enroll in the automated face recognition attendance network</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="alerts-container">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else 'info') }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="/register" enctype="multipart/form-data" id="regForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" class="input-control" placeholder="Choose a unique username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="input-control" placeholder="Create a strong password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="face_image">Face Photo (Recommended for Biometric Matching)</label>
+          <input type="file" id="face_image" name="face_image" accept="image/*" class="input-control" style="padding: 0.5rem;">
+          <small style="display: block; margin-top: 0.35rem; color: var(--text-dim); font-size: 0.78rem;">
+            Upload a clear, front-facing portrait photo (JPG, PNG).
+          </small>
+        </div>
+
+        <input type="hidden" id="webcam_face_data" name="webcam_face_data">
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 1.2rem;">
+          Complete Registration →
+        </button>
+      </form>
+
+      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.88rem; color: var(--text-muted);">
+        Already registered? <a href="{{ url_for('login') }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">Sign in here</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    VisionPass Biometric Attendance System &bull; Secure Enrollment
+  </footer>
 </body>
 </html>

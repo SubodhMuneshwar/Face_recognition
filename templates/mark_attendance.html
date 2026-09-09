@@ -1,22 +1,143 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Mark Attendance</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biometric Verification - VisionPass</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h2>Mark Attendance</h2>
-    {% with messages = get_flashed_messages() %}
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-icon">⚡</div>
+      <span>VisionPass AI</span>
+    </a>
+    <div class="nav-links">
+      <a href="/dashboard" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">← Dashboard</a>
+      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
+    </div>
+  </nav>
+
+  <main class="main-wrapper">
+    <div class="glass-card" style="max-width: 600px; text-align: center;">
+      <h2 class="title-gradient" style="font-size: 1.8rem; margin-bottom: 0.25rem;">Biometric Attendance Scanner</h2>
+      <p class="subtitle" style="margin-bottom: 1.25rem;">Align your face within the frame and ensure good lighting</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul>
-            {% for message in messages %}
-                <li>{{ message }}</li>
+          <div class="alerts-container">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else 'info') }}">
+                {{ message }}
+              </div>
             {% endfor %}
-            </ul>
+          </div>
         {% endif %}
-    {% endwith %}
-    <form method="post">
-        <button type="submit">Mark Attendance</button>
-    </form>
-    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+      {% endwith %}
+
+      <!-- Scanner Viewport -->
+      <div class="scanner-box" id="scannerContainer">
+        <video id="webcam" autoplay playsinline muted class="scanner-video"></video>
+        <canvas id="snapshotCanvas" style="display: none;"></canvas>
+        <div class="scanner-overlay">
+          <div class="scanner-reticle">
+            <div class="scanner-laser"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="cameraStatus" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">
+        Initializing camera feed...
+      </div>
+
+      <!-- Browser Camera Form -->
+      <form id="browserAttendanceForm" method="POST" action="/mark_attendance">
+        <input type="hidden" name="image_data" id="imageDataInput">
+        <button type="button" id="captureBtn" class="btn btn-primary" style="margin-bottom: 0.75rem;">
+          🎯 Scan & Verify Face
+        </button>
+      </form>
+
+      <!-- Server Camera Fallback Form -->
+      <form method="POST" action="/mark_attendance" id="serverForm">
+        <input type="hidden" name="mode" value="server">
+        <button type="submit" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.6rem;">
+          📷 Fallback: Capture via Server Webcam (OpenCV)
+        </button>
+      </form>
+
+      <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-dim);">
+        Target identity: <strong style="color: var(--text-main);">{{ username }}</strong>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    VisionPass Biometric Attendance System &bull; Live Optical Sensor
+  </footer>
+
+  <script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('snapshotCanvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const imageDataInput = document.getElementById('imageDataInput');
+    const browserForm = document.getElementById('browserAttendanceForm');
+    const cameraStatus = document.getElementById('cameraStatus');
+
+    let streamActive = false;
+
+    // Request browser webcam stream
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 },
+          facingMode: "user" 
+        } 
+      })
+      .then(function(stream) {
+        video.srcObject = stream;
+        video.play();
+        streamActive = true;
+        cameraStatus.textContent = "Live feed active. Center your face and click 'Scan & Verify Face'.";
+        cameraStatus.style.color = "#34d399";
+      })
+      .catch(function(err) {
+        console.warn("Browser camera access error:", err);
+        cameraStatus.textContent = "Browser camera not accessible (" + err.message + "). You can use the OpenCV fallback below.";
+        cameraStatus.style.color = "#fb7185";
+      });
+    } else {
+      cameraStatus.textContent = "Browser camera API not supported. Please use the OpenCV server fallback.";
+      cameraStatus.style.color = "#fb7185";
+    }
+
+    // Handle snapshot capture
+    captureBtn.addEventListener('click', function() {
+      if (!streamActive) {
+        alert("Live camera feed is not ready. Please check camera permissions or use the OpenCV fallback button.");
+        return;
+      }
+
+      captureBtn.disabled = true;
+      captureBtn.innerHTML = "⏳ Processing Biometrics...";
+
+      // Draw current video frame to hidden canvas
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      // Un-mirror image for correct facial alignment
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert canvas frame to JPEG base64 data URL
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      imageDataInput.value = dataUrl;
+
+      // Submit form
+      browserForm.submit();
+    });
+  </script>
 </body>
 </html>

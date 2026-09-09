@@ -1,15 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - VisionPass</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Welcome, {{ username }}!</h1>
-    <form action="/mark_attendance" method="POST">
-        <button type="submit">Mark Attendance</button>
-    </form>
-    <a href="/logout"><button>Logout</button></a>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <div class="brand-icon">⚡</div>
+      <span>VisionPass AI</span>
+    </a>
+    <div class="nav-links">
+      <span style="font-size: 0.9rem; color: var(--text-muted);">Signed in as <strong style="color: var(--text-main);">{{ username }}</strong></span>
+      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
+    </div>
+  </nav>
+
+  <main class="main-wrapper" style="justify-content: flex-start; padding-top: 3rem;">
+    <div class="glass-card wide">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+        <div>
+          <h2 class="title-gradient" style="font-size: 2rem;">Welcome, {{ username }}!</h2>
+          <p class="subtitle" style="margin: 0.25rem 0 0 0;">Manage your attendance records and biometric verification</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="/mark_attendance" class="btn btn-success" style="width: auto; padding: 0.75rem 1.5rem;">
+            📸 Biometric Scanner
+          </a>
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="alerts-container">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else 'info') }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Quick Info Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Biometric Status</div>
+          <div style="font-size: 1.2rem; font-weight: 700; color: {% if has_face %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; margin-top: 0.35rem;">
+            {% if has_face %}Enrolled (Active){% else %}Pending Photo{% endif %}
+          </div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Total Logs</div>
+          <div style="font-size: 1.2rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.35rem;">
+            {{ attendance_records|length }} Check-ins
+          </div>
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
+          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Storage Target</div>
+          <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-top: 0.35rem;">
+            attendance.xlsx
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Records Table -->
+      <div>
+        <h3 style="font-size: 1.2rem; margin-bottom: 0.75rem;">Your Attendance Logs</h3>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if attendance_records %}
+                {% for record in attendance_records %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong style="color: var(--text-main);">{{ record.name }}</strong></td>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.time }}</td>
+                    <td><span class="badge badge-success">Verified</span></td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2rem;">
+                    No attendance logs recorded yet. Click "Biometric Scanner" to mark your first attendance!
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    VisionPass Biometric Attendance System &bull; Live Dashboard
+  </footer>
 </body>
 </html>
