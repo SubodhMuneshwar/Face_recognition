@@ -69,11 +69,13 @@ This project was collaboratively engineered and developed by:
 * **Drag-and-Drop Upload**: Dropzone with instantaneous thumbnail generation.
 * **Strict Biometric Enforcement**: Registrations are rejected if no clear human face is detected in the capture, ensuring database integrity.
 
-### 5. 📧 Email & Role-Based Self Registration
-* **Email Verification**: All new accounts must provide a valid email address during registration. Duplicate emails are automatically rejected.
-* **Role Selection**: Users choose their account type during sign-up — **Student/Employee** or **Teacher/Manager**.
-* **Institutional Email Authentication**: Teacher/Manager accounts are restricted to institutional emails ending with `@teach.com`. Attempts to register as a Teacher with any other domain are blocked both client-side (with real-time validation and visual cues) and server-side.
-* **Admin-Only Provisioning**: Administrator accounts cannot be created via public registration — they can only be provisioned through the Master Admin Dashboard.
+### 5. 📧 Role-Aware Registration with Institutional Email Enforcement
+* **Email + Role Selection**: Registration form now requires `Username`, `Email`, `Password`, and `Role` (`Student` / `Teacher`). Admin accounts are **not** self-registrable — they are provisioned only via the Master Admin Console.
+* **Teacher Domain Gate**: Selecting **Teacher / Manager** role enforces `email.lower().endswith("@teach.com")` both client-side (live hint `Teacher @teach.com hint` + blocking `emailDomainError`) and server-side (`app.py:register()` and `admin_create_user()` flash `Teacher registration requires an institutional email ending with @teach.com`). Non-`@teach.com` teacher attempts are rejected with an error and no account or face file is created.
+* **Student Flexibility**: `Student` role accepts any valid email format (`user@example.com`).
+* **Uniqueness**: Both `username` and `email` are unique — duplicate emails are rejected.
+* **Admin Provisioning**: Master Admin can create `Student`, `Teacher` (still `@teach.com` enforced), and `Admin` accounts via `/admin/dashboard` → `Add New User` modal (also live-validated).
+* **Role Promotion Guard**: Promoting an existing user to `Teacher` via the admin role switch is blocked unless their stored email is already `@teach.com`.
 
 ### 6. 📊 Automatic Excel Logging
 * Attendance records are logged in real-time to [attendance.xlsx](file:///c:/Users/DELL/Desktop/Face_recognition/attendance.xlsx) with timestamps (`Name`, `Date`, `Time`).
@@ -125,19 +127,19 @@ flowchart TD
 
 ## 🔑 Pre-Configured Test Credentials
 
-For quick evaluation, the application auto-seeds standard demonstration accounts upon first run:
+For quick evaluation, the application auto-seeds standard demonstration accounts upon first run (now with institutional emails):
 
-| Role | Username | Password | Default Portal |
-| :--- | :--- | :--- | :--- |
-| ⚡ **Master Admin** | `admin` | `admin123` | `/admin/dashboard` |
-| 🎓 **Teacher / Manager** | `teacher` | `teacher123` | `/teacher/dashboard` |
-| 🎒 **Student / Employee** | `student` | `student123` | `/dashboard` |
-| 👤 **Face-Enrolled Student** | `nihar` | `nihar123` | `/dashboard` |
+| Role | Username | Email | Password | Default Portal |
+| :--- | :--- | :--- | :--- | :--- |
+| ⚡ **Master Admin** | `admin` | `admin@admin.visionpass.local` | `admin123` | `/admin/dashboard` |
+| 🎓 **Teacher / Manager** | `teacher` | `teacher@teach.com` | `teacher123` | `/teacher/dashboard` |
+| 🎒 **Student / Employee** | `student` | `student@student.visionpass.local` | `student123` | `/dashboard` |
+| 👤 **Face-Enrolled Student** | `nihar` | `nihar@student.visionpass.local` | `nihar123` | `/dashboard` |
 
 *(The login screen includes **1-Click Auto-Fill** buttons for each role).*
 
-> [!NOTE]
-> **Teacher Registration Rule**: When registering as a Teacher via `/register`, you must use an email ending with `@teach.com` (e.g., `professor.davis@teach.com`). Student accounts accept any valid email domain.
+> [!IMPORTANT]
+> **Teacher Email Rule**: Any new registration selecting **Teacher** role **must** use an email ending in `@teach.com` (e.g., `jane.doe@teach.com`). The form shows a live amber hint when Teacher is selected and blocks submission both client-side and server-side if the domain is invalid. Student emails can be any valid domain.
 
 ---
 
@@ -202,7 +204,7 @@ Face_recognition/
 │   ├── index.html             # Futuristic landing page & telemetry
 │   ├── login.html             # Multi-role authentication & password toggle
 │   ├── mark_attendance.html   # Sci-Fi biometric camera scanner HUD
-│   ├── register.html          # Dual-mode face enrollment with Email & Role selector
+│   └── register.html          # Dual-mode face enrollment (Webcam/Upload)
 ├── instance/
 │   └── users.db               # SQLite database (auto-created)
 ├── app.py                     # Flask application, ML pipeline & RBAC logic

@@ -10,6 +10,9 @@
 </head>
 <body>
   <div class="bg-mesh"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
   <canvas id="bgCanvas"></canvas>
 
   <nav class="navbar">
@@ -147,9 +150,7 @@
                     <strong style="color: var(--text-main); font-size: 0.95rem;">{{ u.username }}</strong>
                     {% if u.username == username %}<span style="font-size: 0.75rem; color: var(--accent-cyan);">(You)</span>{% endif %}
                   </td>
-                  <td>
-                    <span style="font-size: 0.85rem; color: var(--text-muted);">{{ u.email or '—' }}</span>
-                  </td>
+                  <td style="font-size: 0.82rem; color: var(--text-muted); word-break: break-all;">{{ u.email }}</td>
                   <td>
                     {% if u.role == 'admin' %}
                       <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3);">ADMIN</span>
@@ -294,10 +295,19 @@
         <button type="button" id="closeCreateModalBtn" style="background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
       </div>
 
-      <form method="POST" action="/admin/users/create">
+      <form method="POST" action="/admin/users/create" id="adminCreateForm" novalidate>
         <div class="form-group">
           <label for="new_username">Username</label>
           <input type="text" id="new_username" name="username" class="input-control" placeholder="e.g. prof_davis" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="new_email">Email Address</label>
+          <input type="email" id="new_email" name="email" class="input-control" placeholder="e.g. prof@teach.com or student@school.com" required>
+          <div id="adminTeacherHint" style="display: none; font-size: 0.75rem; color: var(--accent-amber); margin-top: 5px; padding: 0.4rem 0.6rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-sm);">
+            🔒 Teacher role requires <strong>@teach.com</strong> email
+          </div>
+          <div id="adminEmailError" class="alert alert-error" style="display: none; margin-top: 6px; font-size: 0.8rem; padding: 0.4rem 0.65rem;"></div>
         </div>
 
         <div class="form-group">
@@ -309,7 +319,7 @@
           <label for="new_role">Assigned System Role</label>
           <select id="new_role" name="role" class="input-control" required>
             <option value="student">Student / Employee (Attendee)</option>
-            <option value="teacher">Teacher / Manager (Supervisor)</option>
+            <option value="teacher">Teacher / Manager (Supervisor) — requires @teach.com</option>
             <option value="admin">Master Administrator (Full Root)</option>
           </select>
         </div>
@@ -374,11 +384,41 @@
       });
     });
 
-    // Create User Modal
+    // Create User Modal + @teach.com validation
     const modal = document.getElementById('createUserModal');
     const openBtn = document.getElementById('openCreateUserBtn');
     const closeBtn = document.getElementById('closeCreateModalBtn');
     const cancelBtn = document.getElementById('cancelCreateModalBtn');
+    const adminEmail = document.getElementById('new_email');
+    const adminRole = document.getElementById('new_role');
+    const adminHint = document.getElementById('adminTeacherHint');
+    const adminError = document.getElementById('adminEmailError');
+    const adminForm = document.getElementById('adminCreateForm');
+
+    function updateAdminHint(){
+      const isTeacher = adminRole.value === 'teacher';
+      adminHint.style.display = isTeacher ? 'block' : 'none';
+      if(isTeacher && adminEmail.value && !adminEmail.value.toLowerCase().endsWith('@teach.com')){
+        adminError.textContent = '⚠️ Teacher role requires @teach.com email';
+        adminError.style.display = 'flex';
+        adminEmail.style.borderColor = 'rgba(244, 63, 94, 0.6)';
+      } else {
+        adminError.style.display = 'none';
+        if(!adminEmail.value) adminEmail.style.borderColor = '';
+      }
+    }
+    if(adminRole) adminRole.addEventListener('change', ()=>{ updateAdminHint(); sounds.playClick(); });
+    if(adminEmail) adminEmail.addEventListener('input', updateAdminHint);
+    if(adminForm) adminForm.addEventListener('submit', (e)=>{
+      const email = adminEmail.value.trim().toLowerCase();
+      const role = adminRole.value;
+      if(!email.includes('@') || !email.split('@')[1].includes('.')){
+        e.preventDefault(); adminError.textContent='⚠️ Please enter a valid email address.'; adminError.style.display='flex'; adminEmail.style.borderColor='rgba(244, 63, 94, 0.6)'; sounds.playError(); return false;
+      }
+      if(role==='teacher' && !email.endsWith('@teach.com')){
+        e.preventDefault(); adminError.textContent='⚠️ Teacher accounts require @teach.com email'; adminError.style.display='flex'; adminEmail.style.borderColor='rgba(244, 63, 94, 0.6)'; sounds.playError(); return false;
+      }
+    });
 
     openBtn.addEventListener('click', () => {
       modal.style.display = 'flex';

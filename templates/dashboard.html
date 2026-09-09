@@ -10,6 +10,9 @@
 </head>
 <body>
   <div class="bg-mesh"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
   <canvas id="bgCanvas"></canvas>
 
   <nav class="navbar">
@@ -20,31 +23,31 @@
     <div class="nav-links">
       <button class="sound-toggle" id="soundBtn" title="Toggle UI Sound FX">🔊</button>
       <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); padding: 0.35rem 0.85rem; border-radius: 9999px;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-emerald);"></span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald);"></span>
         <span style="font-size: 0.85rem; font-weight: 600;">{{ username }}</span>
       </div>
       <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="sounds.playClick()">Logout</a>
     </div>
   </nav>
 
-  <main class="main-wrapper" style="justify-content: flex-start; padding-top: 2.5rem;">
+  <main class="main-wrapper" style="justify-content: flex-start; padding-top: 2.2rem;">
     <div class="glass-card wide">
       
       <!-- Header Banner -->
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1.6rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-color);">
         <div>
-          <div style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-cyan); font-weight: 700; margin-bottom: 0.25rem;">
-            <span>●</span> Biometric Console
+          <div style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-cyan); font-weight: 700; margin-bottom: 0.25rem;">
+            <span class="pulse-dot" style="width: 6px; height: 6px; background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan);"></span> Biometric Console • <span id="liveClock" style="color: var(--text-muted); font-weight: 500;">--:--:--</span>
           </div>
-          <h2 class="title-gradient" style="font-size: 2.2rem;">Welcome back, {{ username }}</h2>
-          <p class="subtitle" style="margin: 0.2rem 0 0 0;">View verified attendance history and launch real-time scanning</p>
+          <h2 class="title-gradient" style="font-size: 2.1rem;">Welcome back, {{ username }}</h2>
+          <p class="subtitle" style="margin: 0.2rem 0 0 0;">Verified attendance history • newest first • synced to <code style="background: rgba(255,255,255,0.06); padding: 0.12rem 0.35rem; border-radius: 5px;">attendance.xlsx</code></p>
         </div>
 
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <a href="/download_attendance" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.25rem;" title="Download attendance.xlsx" onclick="sounds.playClick()">
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;">
+          <a href="/download_attendance" class="btn btn-secondary" style="width: auto; padding: 0.7rem 1.15rem; font-size: 0.85rem;" title="Download attendance.xlsx" onclick="sounds.playClick()">
             📊 Export Excel
           </a>
-          <a href="/mark_attendance" class="btn btn-success" style="width: auto; padding: 0.75rem 1.5rem;" onclick="sounds.playClick()">
+          <a href="/mark_attendance" class="btn btn-success" style="width: auto; padding: 0.7rem 1.4rem;" onclick="sounds.playClick()">
             📸 Open Scanner
           </a>
         </div>
@@ -62,49 +65,71 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Metrics Cards -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
+      <!-- Metrics Cards — now with count-up & hover sound -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.4rem;">
         
-        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
-          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Biometric State</div>
-          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: {% if has_face %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; margin-top: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.2rem; position: relative; overflow: hidden; transition: transform 0.25s, border-color 0.25s;" onmouseenter="try{sounds.playHover()}catch(e){};" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(99,102,241,0.25)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--border-color)'">
+          <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em;">Biometric State</div>
+          <div style="font-size: 1.35rem; font-weight: 800; font-family: 'Outfit'; color: {% if has_face %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.4rem;">
             <span>{% if has_face %}Enrolled (Active){% else %}Pending Photo{% endif %}</span>
-            <span style="font-size: 1.1rem;">{% if has_face %}✓{% else %}⚠️{% endif %}</span>
+            <span style="font-size: 1rem;">{% if has_face %}✓{% else %}⚠️{% endif %}</span>
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
-            {% if has_face %}128-d reference encoding active{% else %}Register a face in known_faces{% endif %}
-          </div>
-        </div>
-
-        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
-          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Your Check-Ins</div>
-          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: var(--accent-cyan); margin-top: 0.4rem;">
-            <span id="counterLog">{{ attendance_records|length }}</span> Verified
-          </div>
-          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
-            Synced with attendance.xlsx
+          <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">
+            {% if has_face %}128-d vector ready • tolerance 0.52{% else %}Add face via Register → known_faces{% endif %}
           </div>
         </div>
 
-        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
-          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Storage Destination</div>
-          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: #a5b4fc; margin-top: 0.4rem;">
-            attendance.xlsx
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.2rem; transition: transform 0.25s, border-color 0.25s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(6,182,212,0.25)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--border-color)'">
+          <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em;">Your Check-Ins</div>
+          <div style="font-size: 1.35rem; font-weight: 800; font-family: 'Outfit'; color: var(--accent-cyan); margin-top: 0.35rem;">
+            <span id="counterLog" data-target="{{ attendance_records|length }}">0</span> <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">verified</span>
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
-            Local filesystem spreadsheet
-          </div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">All-time • press <kbd style="background: rgba(255,255,255,0.07); padding: 0.08rem 0.3rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">S</kbd> to scan</div>
+        </div>
+
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.2rem; transition: transform 0.25s, border-color 0.25s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.borderColor='rgba(139,92,246,0.25)'" onmouseout="this.style.transform='none'; this.style.borderColor='var(--border-color)'">
+          <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em;">Storage</div>
+          <div style="font-size: 1.3rem; font-weight: 800; font-family: 'Outfit'; color: #a5b4fc; margin-top: 0.35rem;">attendance.xlsx</div>
+          <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">Local filesystem • auto-sync</div>
         </div>
 
       </div>
 
-      <!-- Logs Section with Real-Time Search -->
-      <div style="margin-top: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-          <h3 style="font-size: 1.25rem; font-family: 'Outfit';">Attendance Records</h3>
+      <!-- Mini chart + actions -->
+      <div style="display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1rem; margin-bottom: 1.4rem;">
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);">Recent activity (7 days)</div>
+            <span style="font-size: 0.72rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.22); color: #a5b4fc; padding: 0.2rem 0.5rem; border-radius: 9999px;">{{ attendance_records|length }} total</span>
+          </div>
+          <canvas id="miniChart" height="70" style="width: 100%; margin-top: 0.7rem; display: block;"></canvas>
+          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-dim); margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em;">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);">Quick actions</div>
+          <a href="/mark_attendance" class="btn btn-success" style="padding: 0.7rem;" onclick="sounds.playClick()">📸 Open scanner</a>
+          <button type="button" class="btn btn-secondary" style="padding: 0.6rem;" onclick="exportCSV(); sounds.playClick()">⬇ Export CSV</button>
+          <button type="button" class="btn btn-secondary" style="padding: 0.6rem; font-size: 0.82rem;" onclick="copySummary(); sounds.playClick()">⎘ Copy summary</button>
+        </div>
+      </div>
+
+      <!-- Logs Section -->
+      <div style="margin-top: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.9rem;">
+          <h3 style="font-size: 1.2rem; font-family: 'Outfit';">Attendance Records</h3>
           
-          <div style="position: relative; width: 100%; max-width: 280px;">
-            <input type="text" id="searchLogs" class="input-control" placeholder="Search by date or time..." style="padding: 0.5rem 0.9rem; font-size: 0.85rem;">
+          <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <div style="position: relative;">
+              <input type="text" id="searchLogs" class="input-control" placeholder="Search date or time…" style="padding: 0.5rem 0.85rem 0.5rem 2rem; font-size: 0.84rem; width: 220px;">
+              <span style="position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.9rem;">🔍</span>
+            </div>
+            <select id="sortSelect" class="input-control" style="width: auto; padding: 0.45rem 0.7rem; font-size: 0.82rem;">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+            <span style="font-size: 0.72rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: var(--text-muted); padding: 0.25rem 0.55rem; border-radius: 9999px;" id="rowCount">{{ attendance_records|length }} rows</span>
           </div>
         </div>
 
@@ -119,14 +144,14 @@
                 <th>Verification</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="tbody">
               {% if attendance_records %}
                 {% for record in attendance_records %}
-                  <tr>
+                  <tr data-date="{{ record.date }}" data-time="{{ record.time }}">
                     <td style="color: var(--text-dim);">{{ loop.index }}</td>
                     <td><strong style="color: var(--text-main);">{{ record.name }}</strong></td>
-                    <td class="log-date">{{ record.date }}</td>
-                    <td class="log-time">{{ record.time }}</td>
+                    <td class="log-date"><span style="display: inline-flex; align-items: center; gap: 0.3rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.8rem;">📅 {{ record.date }}</span></td>
+                    <td class="log-time" style="font-variant-numeric: tabular-nums;">{{ record.time }}</td>
                     <td>
                       <span class="badge badge-success">
                         <span>●</span> Biometric Pass
@@ -136,8 +161,10 @@
                 {% endfor %}
               {% else %}
                 <tr id="emptyRow">
-                  <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2.5rem;">
-                    No attendance logs found yet. Click <strong>Open Scanner</strong> above to record your attendance!
+                  <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2.2rem;">
+                    <div style="font-size: 1.8rem; margin-bottom: 0.4rem;">📭</div>
+                    <div style="font-weight: 600; color: var(--text-main);">No logs yet</div>
+                    <div style="font-size: 0.85rem; margin-top: 0.2rem;">Click <strong>Open Scanner</strong> to record your first attendance!</div>
                   </td>
                 </tr>
               {% endif %}
@@ -150,37 +177,79 @@
   </main>
 
   <footer>
-    VisionPass Biometric Attendance System &bull; Live Audit Logs
+    VisionPass Biometric Attendance System &bull; Live Audit Logs • Interactive Canvas Active
   </footer>
 
   <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
   <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
   <script>
-    // Live table search filtering
-    const searchInput = document.getElementById('searchLogs');
-    const table = document.getElementById('logsTable');
-    if (searchInput && table) {
-      searchInput.addEventListener('input', () => {
-        const query = searchInput.value.toLowerCase();
-        const rows = table.querySelectorAll('tbody tr');
-        rows.forEach(r => {
-          if (r.id === 'emptyRow') return;
-          const text = r.textContent.toLowerCase();
-          r.style.display = text.includes(query) ? '' : 'none';
-        });
-      });
+    // Live clock
+    function tick(){ const el=document.getElementById('liveClock'); if(el) el.textContent=new Date().toLocaleTimeString(); }
+    tick(); setInterval(tick,1000);
+
+    // Count-up
+    const counter=document.getElementById('counterLog');
+    if(counter){
+      const target=parseInt(counter.dataset.target||'0'); let cur=0;
+      const step=Math.max(1, Math.ceil(target/24));
+      const iv=setInterval(()=>{ cur=Math.min(target, cur+step); counter.textContent=cur; if(cur>=target) clearInterval(iv); },28);
     }
 
-    // Sound toggle
-    const soundBtn = document.getElementById('soundBtn');
-    function updateSoundBtn() {
-      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    // Search + sort
+    const searchInput=document.getElementById('searchLogs'), tbody=document.getElementById('tbody'), rows=[...document.querySelectorAll('#tbody tr:not(#emptyRow)')], rowCount=document.getElementById('rowCount'), sortSelect=document.getElementById('sortSelect');
+    function applyFilter(){
+      const q=(searchInput.value||'').toLowerCase();
+      let visible=0;
+      rows.forEach(r=>{ const show=!q || r.textContent.toLowerCase().includes(q); r.style.display=show?'':'none'; if(show) visible++; });
+      rowCount.textContent=visible+' rows';
+      const noMatch=document.getElementById('noMatch');
+      if(visible===0 && rows.length>0){
+        if(!noMatch){ const tr=document.createElement('tr'); tr.id='noMatch'; tr.innerHTML='<td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-dim);">🔍 No matches for “'+searchInput.value+'”</td>'; tbody.appendChild(tr); }
+      } else if(noMatch) noMatch.remove();
     }
-    soundBtn.addEventListener('click', () => {
-      sounds.toggleMute();
-      updateSoundBtn();
-      sounds.playClick();
+    if(searchInput) searchInput.addEventListener('input', applyFilter);
+    if(sortSelect) sortSelect.addEventListener('change', ()=>{
+      const rev=sortSelect.value==='oldest';
+      const sorted=[...rows].sort((a,b)=>{ const da=a.dataset.date+' '+a.dataset.time; const db=b.dataset.date+' '+b.dataset.time; return rev ? da.localeCompare(db) : db.localeCompare(da); });
+      sorted.forEach((r,i)=>{ r.children[0].textContent=i+1; tbody.appendChild(r); });
+      applyFilter(); sounds.playClick();
     });
+    document.addEventListener('keydown', e=>{ if(e.key==='/' && document.activeElement.tagName!=='INPUT'){ e.preventDefault(); searchInput.focus(); } if(e.key.toLowerCase()==='s' && !e.ctrlKey && document.activeElement.tagName!=='INPUT'){ location.href='/mark_attendance'; } });
+
+    // Mini chart
+    (function(){
+      const c=document.getElementById('miniChart'); if(!c) return;
+      const ctx=c.getContext('2d'); const dpr=window.devicePixelRatio||1;
+      const rect=c.getBoundingClientRect(); c.width=rect.width*dpr; c.height=70*dpr; ctx.scale(dpr,dpr);
+      const W=rect.width, H=70;
+      const target=parseInt(counter ? counter.dataset.target : '0');
+      // Demo distribution — spread target across week
+      const vals=[ Math.min(2, Math.floor(target*0.15)), Math.min(2, Math.floor(target*0.1)), 1, 0, Math.min(3, Math.floor(target*0.35)), 1, Math.min(4, Math.ceil(target*0.25)) ];
+      if(target===0) vals.fill(0);
+      const max=Math.max(1, ...vals);
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='rgba(255,255,255,0.06)'; for(let i=0;i<3;i++){ const y=(H/3)*i+8; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+      ctx.beginPath(); vals.forEach((v,i)=>{ const x=(W/(vals.length-1))*i; const y=H-10-(v/max)*(H-22); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.lineTo(W,H-10); ctx.lineTo(0,H-10); ctx.closePath();
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(99,102,241,0.32)'); g.addColorStop(1,'rgba(99,102,241,0)'); ctx.fillStyle=g; ctx.fill();
+      ctx.beginPath(); vals.forEach((v,i)=>{ const x=(W/(vals.length-1))*i; const y=H-10-(v/max)*(H-22); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.strokeStyle='#6366f1'; ctx.lineWidth=2.2; ctx.lineJoin='round'; ctx.stroke();
+      vals.forEach((v,i)=>{ const x=(W/(vals.length-1))*i; const y=H-10-(v/max)*(H-22); ctx.beginPath(); ctx.arc(x,y,3.1,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill(); ctx.strokeStyle='#6366f1'; ctx.lineWidth=1.1; ctx.stroke(); });
+    })();
+
+    function exportCSV(){
+      const rows=[[...document.querySelectorAll('#logsTable thead th')].map(th=>th.textContent.trim()).join(',')];
+      document.querySelectorAll('#tbody tr:not([style*="display: none"])').forEach(tr=>{ if(tr.id==='emptyRow'||tr.id==='noMatch') return; const tds=[...tr.querySelectorAll('td')].map(td=>'"'+td.textContent.trim().replace(/"/g,'""')+'"'); rows.push(tds.join(',')); });
+      const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='visionpass_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+      try{sounds.playSuccess()}catch(e){}
+    }
+    function copySummary(){
+      const n=counter ? counter.dataset.target : '0';
+      const txt='VisionPass — {{ username }} • '+n+' verified check-ins • '+new Date().toLocaleString();
+      navigator.clipboard.writeText(txt); try{sounds.playClick()}catch(e){}
+    }
+
+    const soundBtn=document.getElementById('soundBtn');
+    function updateSoundBtn(){ soundBtn.textContent=sounds.isMuted() ? '🔇' : '🔊'; }
+    soundBtn.addEventListener('click', ()=>{ sounds.toggleMute(); updateSoundBtn(); sounds.playClick(); });
     updateSoundBtn();
   </script>
 </body>

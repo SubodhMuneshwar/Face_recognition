@@ -22,7 +22,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), default="", nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default="student", nullable=False)  # 'student', 'teacher', 'admin'
 
@@ -278,36 +278,34 @@ def login():
 def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "").strip()
         role = request.form.get("role", "student").strip().lower()
 
-        if not username or not email or not password:
-            flash("Username, email, and password are all required.", "error")
-            return redirect(url_for("register"))
-
-        # Basic email format validation
-        import re
-        if not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email):
-            flash("Please enter a valid email address.", "error")
-            return redirect(url_for("register"))
-
-        # Only allow 'student' or 'teacher' roles from public registration (admin is admin-only)
+        # Only student/teacher allowed via self-registration; admin via admin dashboard only
         if role not in ["student", "teacher"]:
             role = "student"
 
-        # Teacher role gate: enforce @teach.com email domain
-        if role == "teacher":
-            if not email.lower().endswith("@teach.com"):
-                flash("Teacher accounts require an institutional email ending with @teach.com. Please use a valid @teach.com email or register as a Student.", "error")
-                return redirect(url_for("register"))
+        if not username or not email or not password:
+            flash("Username, email, and password are required.", "error")
+            return redirect(url_for("register"))
+
+        # Basic email format validation
+        if "@" not in email or "." not in email.split("@")[-1]:
+            flash("Please provide a valid email address.", "error")
+            return redirect(url_for("register"))
+
+        # Teacher domain enforcement: only @teach.com can create teacher accounts
+        if role == "teacher" and not email.lower().endswith("@teach.com"):
+            flash("Teacher registration requires an institutional email ending with @teach.com. Please use a valid teacher email or register as Student.", "error")
+            return redirect(url_for("register"))
 
         if User.query.filter_by(username=username).first():
             flash("Username already exists. Please choose a different one.", "error")
             return redirect(url_for("register"))
 
         if User.query.filter_by(email=email).first():
-            flash("An account with this email already exists. Please use a different email or sign in.", "error")
+            flash("Email already registered. Please use a different email address.", "error")
             return redirect(url_for("register"))
 
         # Strictly enforce Face Biometric Capture (required)
@@ -368,8 +366,7 @@ def register():
         # Update in-memory face encodings
         load_known_faces()
 
-        role_label = "Teacher / Manager" if role == "teacher" else "Student / Employee"
-        flash(f"Registration successful! {role_label} profile enrolled for {username}. Please sign in.", "success")
+        flash(f"Registration successful! {role.capitalize()} profile enrolled for {username} ({email}). Please sign in.", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -548,23 +545,40 @@ def admin_dashboard():
 @admin_required
 def admin_create_user():
     username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip().lower()
     password = request.form.get("password", "").strip()
-    role = request.form.get("role", "student").strip()
+    role = request.form.get("role", "student").strip().lower()
 
-    if not username or not password:
-        flash("Username and password are required.", "error")
+    if not username or not email or not password:
+        flash("Username, email, and password are required.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    if "@" not in email or "." not in email.split("@")[-1]:
+        flash("Please provide a valid email address.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    if role == "teacher" and not email.lower().endswith("@teach.com"):
+        flash("Teacher accounts require an email ending with @teach.com.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    if role not in ["student", "teacher", "admin"]:
+        flash("Invalid role selected.", "error")
         return redirect(url_for("admin_dashboard"))
 
     if User.query.filter_by(username=username).first():
         flash("Username already exists.", "error")
         return redirect(url_for("admin_dashboard"))
 
-    new_user = User(username=username, role=role)
+    if User.query.filter_by(email=email).first():
+        flash("Email already registered.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    new_user = User(username=username, email=email, role=role)
     new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
 
-    flash(f"Account for {username} ({role.capitalize()}) created successfully.", "success")
+    flash(f"Account for {username} ({email}, {role.capitalize()}) created successfully.", "success")
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/users/update_role/<int:user_id>", methods=["POST"])
@@ -575,8 +589,12 @@ def admin_update_role(user_id):
         flash("User not found.", "error")
         return redirect(url_for("admin_dashboard"))
 
-    new_role = request.form.get("role")
+    new_role = request.form.get("role", "").strip().lower()
     if new_role in ["student", "teacher", "admin"]:
+        # Enforce @teach.com domain for teacher role promotion
+        if new_role == "teacher" and not user.email.lower().endswith("@teach.com"):
+            flash(f"Cannot promote {user.username} to Teacher — email {user.email} must end with @teach.com.", "error")
+            return redirect(url_for("admin_dashboard"))
         user.role = new_role
         db.session.commit()
         flash(f"Updated role for {user.username} to {new_role.capitalize()}.", "success")
@@ -667,62 +685,92 @@ def init_db_and_seed():
                     conn.exec_driver_sql("ALTER TABLE user ADD COLUMN email VARCHAR(120) DEFAULT ''")
                     conn.commit()
                     print("[Database] Successfully added 'email' column to 'user' table.")
+                # Backfill empty emails for legacy rows to maintain uniqueness
+                users = conn.exec_driver_sql("SELECT id, username, email, role FROM user").fetchall()
+                for uid, uname, uemail, urole in users:
+                    if not uemail or uemail.strip() == "":
+                        # Generate a deterministic placeholder email
+                        domain = "@teach.com" if (urole == "teacher") else "@student.visionpass.local"
+                        if uname.lower() == "admin":
+                            domain = "@admin.visionpass.local"
+                        new_email = f"{uname.lower()}{domain}"
+                        # Ensure uniqueness if collision
+                        suffix = 1
+                        base_email = new_email
+                        while True:
+                            exists = conn.exec_driver_sql("SELECT 1 FROM user WHERE email = ? AND id != ?", (new_email, uid)).fetchone()
+                            if not exists:
+                                break
+                            new_email = base_email.replace("@", f"+{suffix}@")
+                            suffix += 1
+                        conn.exec_driver_sql("UPDATE user SET email = ? WHERE id = ?", (new_email, uid))
+                conn.commit()
         except Exception as e:
             print(f"[Database Migration Notice] {e}")
 
         # Seed admin / admin123
         admin = User.query.filter_by(username="admin").first()
         if not admin:
-            admin = User(username="admin", email="admin@visionpass.com", role="admin")
+            admin = User(username="admin", email="admin@admin.visionpass.local", role="admin")
             admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
-            print("[Database] Seeded Master Administrator: 'admin' / 'admin123'")
+            print("[Database] Seeded Master Administrator: 'admin' / 'admin123' (admin@admin.visionpass.local)")
         else:
+            updated = False
             if admin.role != "admin":
                 admin.role = "admin"
-            if not admin.email:
-                admin.email = "admin@visionpass.com"
-            db.session.commit()
+                updated = True
+            if not admin.email or admin.email.strip() == "":
+                admin.email = "admin@admin.visionpass.local"
+                updated = True
+            if updated:
+                db.session.commit()
 
-        # Seed teacher / teacher123
+        # Seed teacher / teacher123 — must use @teach.com domain
         teacher = User.query.filter_by(username="teacher").first()
         if not teacher:
             teacher = User(username="teacher", email="teacher@teach.com", role="teacher")
             teacher.set_password("teacher123")
             db.session.add(teacher)
             db.session.commit()
-            print("[Database] Seeded Teacher/Manager: 'teacher' / 'teacher123'")
+            print("[Database] Seeded Teacher/Manager: 'teacher' / 'teacher123' (teacher@teach.com)")
         else:
+            updated = False
             if teacher.role != "teacher":
                 teacher.role = "teacher"
-            if not teacher.email:
+                updated = True
+            if not teacher.email or not teacher.email.lower().endswith("@teach.com"):
                 teacher.email = "teacher@teach.com"
-            db.session.commit()
+                updated = True
+            if updated:
+                db.session.commit()
 
         # Seed student / student123
         student = User.query.filter_by(username="student").first()
         if not student:
-            student = User(username="student", email="student@visionpass.com", role="student")
+            student = User(username="student", email="student@student.visionpass.local", role="student")
             student.set_password("student123")
             db.session.add(student)
             db.session.commit()
             print("[Database] Seeded Student: 'student' / 'student123'")
-        elif not student.email:
-            student.email = "student@visionpass.com"
-            db.session.commit()
+        else:
+            if not student.email or student.email.strip() == "":
+                student.email = "student@student.visionpass.local"
+                db.session.commit()
 
         # Seed nihar
         nihar = User.query.filter_by(username="nihar").first()
         if not nihar:
-            nihar = User(username="nihar", email="nihar@visionpass.com", role="student")
+            nihar = User(username="nihar", email="nihar@student.visionpass.local", role="student")
             nihar.set_password("nihar123")
             db.session.add(nihar)
             db.session.commit()
             print("[Database] Seeded Student: 'nihar' / 'nihar123'")
-        elif not nihar.email:
-            nihar.email = "nihar@visionpass.com"
-            db.session.commit()
+        else:
+            if not nihar.email or nihar.email.strip() == "":
+                nihar.email = "nihar@student.visionpass.local"
+                db.session.commit()
 
 init_db_and_seed()
 

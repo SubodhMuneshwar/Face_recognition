@@ -10,6 +10,9 @@
 </head>
 <body>
   <div class="bg-mesh"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
   <canvas id="bgCanvas"></canvas>
 
   <nav class="navbar">
@@ -25,25 +28,21 @@
   </nav>
 
   <main class="main-wrapper">
-    <div class="glass-card" style="max-width: 620px; text-align: center;">
+    <div class="glass-card" style="max-width: 640px; text-align: center;">
       
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-        <div style="text-align: left;">
-          <h2 class="title-gradient" style="font-size: 1.85rem; margin-bottom: 0.15rem;">Optical Face Scanner</h2>
-          <p class="subtitle" style="margin-bottom: 0; font-size: 0.85rem;">Target identity: <strong style="color: var(--text-main);">{{ username }}</strong></p>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.1rem; text-align: left; gap: 1rem;">
+        <div>
+          <h2 class="title-gradient" style="font-size: 1.75rem; margin-bottom: 0.15rem;">Optical Face Scanner</h2>
+          <p class="subtitle" style="margin-bottom: 0; font-size: 0.84rem;">Target: <strong style="color: var(--text-main);">{{ username }}</strong> • tolerance 0.52 • mirrored preview</p>
         </div>
-
-        <!-- Camera Device Switcher -->
-        <div style="text-align: right;">
-          <select id="cameraSelect" class="input-control" style="width: auto; padding: 0.4rem 0.75rem; font-size: 0.78rem; background: rgba(0,0,0,0.5);">
-            <option value="">Detecting cameras...</option>
-          </select>
-        </div>
+        <select id="cameraSelect" class="input-control" style="width: auto; padding: 0.4rem 0.7rem; font-size: 0.78rem; background: rgba(0,0,0,0.45);">
+          <option value="">Detecting cameras…</option>
+        </select>
       </div>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="alerts-container">
+          <div class="alerts-container" style="text-align: left;">
             {% for category, message in messages %}
               <div class="alert alert-{{ 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else 'info') }}">
                 {{ message }}
@@ -53,63 +52,73 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Futuristic HUD Viewport -->
-      <div class="scanner-container" id="scannerViewport">
+      <!-- Interactive HUD Viewport — background canvas preserved underneath -->
+      <div class="scanner-container" id="scannerViewport" style="position: relative;">
         <video id="webcam" autoplay playsinline muted class="scanner-video"></video>
         <canvas id="snapshotCanvas" style="display: none;"></canvas>
-        <div id="flashOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0;"></div>
+        <div id="flashOverlay" style="position: absolute; inset: 0; pointer-events: none; opacity: 0; background: white; transition: opacity 0.22s;"></div>
 
-        <!-- Sci-Fi HUD Overlay Elements -->
         <div class="scanner-hud">
-          <!-- Brackets -->
           <div class="hud-corner hud-top-left"></div>
           <div class="hud-corner hud-top-right"></div>
           <div class="hud-corner hud-bottom-left"></div>
           <div class="hud-corner hud-bottom-right"></div>
-
-          <!-- Status badge -->
           <div class="hud-status-badge">
             <span class="pulse-dot"></span>
             <span id="hudStatusText">Live Feed Active</span>
           </div>
-
-          <!-- Biometric Reticle & Laser -->
           <div class="scanner-reticle">
             <div class="scanner-laser"></div>
           </div>
-
-          <!-- Telemetry string -->
           <div class="hud-telemetry">
             OPTICAL FEED // 128-D VECTOR // VERIFY: {{ username|upper }}
           </div>
         </div>
+        <!-- Countdown overlay -->
+        <div id="countdownOverlay" style="position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.58); backdrop-filter: blur(4px); font-size: 4.5rem; font-weight: 800; color: #fff; text-shadow: 0 0 24px var(--accent-cyan);">3</div>
+        <!-- Preview overlay after capture -->
+        <div id="previewOverlay" style="position: absolute; inset: 0; display: none; background: #000;"><img id="previewImg" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);" alt="preview"><button type="button" id="retakeOverlayBtn" style="position: absolute; top: 0.6rem; right: 0.6rem; background: rgba(0,0,0,0.65); color: #fff; border: 1px solid rgba(255,255,255,0.18); padding: 0.35rem 0.65rem; border-radius: 9999px; cursor: pointer; font-size: 0.78rem;">↺ Retake</button></div>
       </div>
 
-      <div id="cameraStatus" style="font-size: 0.85rem; color: #34d399; margin-bottom: 1.25rem;">
-        Camera online. Align your face inside the reticle and click below.
+      <div id="cameraStatus" style="font-size: 0.84rem; color: #34d399; margin: 0.6rem 0 1rem; display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+        <span style="display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.22); color: #34d399; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.78rem;" id="statusChip"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-emerald); display: inline-block;"></span> LIVE</span>
+        <span id="statusText">Camera online. Center face inside reticle.</span>
       </div>
 
-      <!-- Browser Camera Form -->
+      <!-- Primary capture -->
       <form id="browserAttendanceForm" method="POST" action="/mark_attendance">
         <input type="hidden" name="image_data" id="imageDataInput">
-        <button type="button" id="captureBtn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.05rem; margin-bottom: 0.85rem;">
+        <button type="button" id="captureBtn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.02rem; margin-bottom: 0.6rem;" onclick="sounds.playScan()">
           🎯 Verify Biometrics & Mark Attendance
         </button>
       </form>
 
-      <!-- Server Camera Fallback Form -->
-      <form method="POST" action="/mark_attendance" id="serverForm">
-        <input type="hidden" name="mode" value="server">
-        <button type="submit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.6rem 1rem;" onclick="sounds.playClick()">
-          📷 Fallback: Capture using Server Webcam (OpenCV)
-        </button>
-      </form>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 0.9rem;">
+        <button type="button" id="autoBtn" class="btn btn-secondary" style="padding: 0.6rem; font-size: 0.82rem;">⏱ Auto 3s</button>
+        <button type="button" id="flipBtn" class="btn btn-secondary" style="padding: 0.6rem; font-size: 0.82rem;">🔄 Mirror</button>
+        <button type="button" id="fullscreenBtn" class="btn btn-secondary" style="padding: 0.6rem; font-size: 0.82rem;">⛶ Fullscreen</button>
+      </div>
+
+      <!-- Fallback -->
+      <details style="text-align: left; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.8rem;">
+        <summary style="cursor: pointer; font-weight: 600; font-size: 0.84rem; color: var(--text-muted);">Fallback: Server webcam (OpenCV)</summary>
+        <p style="font-size: 0.79rem; color: var(--text-dim); margin: 0.5rem 0 0.7rem;">Uses the machine running Flask. Useful when browser permission is denied.</p>
+        <form method="POST" action="/mark_attendance" id="serverForm">
+          <input type="hidden" name="mode" value="server">
+          <button type="submit" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.55rem 1rem; width: 100%;" onclick="sounds.playClick()">📷 Capture via Server (VideoCapture 0)</button>
+        </form>
+      </details>
+
+      <div style="margin-top: 0.85rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.76rem; color: var(--text-dim);">
+        <span>Press <kbd style="background: rgba(255,255,255,0.07); padding: 0.12rem 0.35rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Space</kbd> to scan • <kbd style="background: rgba(255,255,255,0.07); padding: 0.12rem 0.35rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">F</kbd> fullscreen</span>
+        <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan);"></span> Interactive canvas active</span>
+      </div>
 
     </div>
   </main>
 
   <footer>
-    VisionPass Biometric Attendance System &bull; Live Optical Sensor
+    VisionPass Biometric Attendance System &bull; Live Optical Sensor • Canvas Particles Active
   </footer>
 
   <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
@@ -121,115 +130,99 @@
     const imageDataInput = document.getElementById('imageDataInput');
     const browserForm = document.getElementById('browserAttendanceForm');
     const cameraStatus = document.getElementById('cameraStatus');
+    const statusText = document.getElementById('statusText');
+    const statusChip = document.getElementById('statusChip');
     const cameraSelect = document.getElementById('cameraSelect');
     const flashOverlay = document.getElementById('flashOverlay');
     const hudStatus = document.getElementById('hudStatusText');
+    const countdownOverlay = document.getElementById('countdownOverlay');
+    const previewOverlay = document.getElementById('previewOverlay');
+    const previewImg = document.getElementById('previewImg');
+    const retakeOverlayBtn = document.getElementById('retakeOverlayBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const flipBtn = document.getElementById('flipBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const viewport = document.getElementById('scannerViewport');
 
     let currentStream = null;
+    let mirrored = true;
+    let autoTimer = null;
 
-    // Discover cameras
-    async function getCameras() {
-      try {
+    async function getCameras(){
+      try{
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        cameraSelect.innerHTML = '';
-        if (videoDevices.length === 0) {
-          cameraSelect.innerHTML = '<option value="">Default Camera</option>';
-          return;
-        }
-        videoDevices.forEach((dev, idx) => {
-          const opt = document.createElement('option');
-          opt.value = dev.deviceId;
-          opt.textContent = dev.label || `Camera ${idx + 1}`;
-          cameraSelect.appendChild(opt);
-        });
-      } catch (err) {
-        console.warn("Could not enumerate devices:", err);
-      }
+        const vids = devices.filter(d=>d.kind==='videoinput');
+        cameraSelect.innerHTML='';
+        if(vids.length===0){ cameraSelect.innerHTML='<option value="">Default Camera</option>'; return; }
+        vids.forEach((dev,i)=>{ const o=document.createElement('option'); o.value=dev.deviceId; o.textContent=dev.label||`Camera ${i+1}`; cameraSelect.appendChild(o); });
+      }catch(e){ console.warn(e); }
     }
 
-    // Start video with chosen deviceId
-    async function startStream(deviceId = null) {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-      
-      const constraints = {
-        video: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: "user"
-        }
-      };
-
-      try {
+    async function startStream(deviceId=null){
+      if(currentStream) currentStream.getTracks().forEach(t=>t.stop());
+      const constraints={ video:{ deviceId: deviceId?{exact:deviceId}:undefined, width:{ideal:1280}, height:{ideal:720}, facingMode:"user" } };
+      try{
         currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-        await video.play();
-        cameraStatus.textContent = "Live optical feed ready. Center your face and trigger verification.";
-        cameraStatus.style.color = "#34d399";
-        hudStatus.textContent = "Feed Active";
+        video.srcObject=currentStream; await video.play();
+        statusText.textContent="Live optical feed ready. Center face and trigger verification.";
+        statusText.style.color="#34d399"; hudStatus.textContent="Feed Active";
+        statusChip.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-emerald);display:inline-block;"></span> LIVE';
         await getCameras();
-      } catch (err) {
-        console.warn("Camera access error:", err);
-        cameraStatus.textContent = "Browser camera access denied or busy. Use the OpenCV server fallback below.";
-        cameraStatus.style.color = "#fb7185";
-        hudStatus.textContent = "Camera Offline";
+        try{sounds.playSuccess()}catch(e){}
+      }catch(err){
+        statusText.textContent="Camera blocked — allow permission or use server fallback.";
+        statusText.style.color="#fb7185"; hudStatus.textContent="Camera Offline";
+        statusChip.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-rose);display:inline-block;"></span> OFFLINE';
+        try{sounds.playError()}catch(e){}
       }
     }
-
     startStream();
+    cameraSelect.addEventListener('change', ()=>{ sounds.playClick(); startStream(cameraSelect.value); });
 
-    cameraSelect.addEventListener('change', () => {
-      sounds.playClick();
-      startStream(cameraSelect.value);
-    });
-
-    // Capture & Submit
-    captureBtn.addEventListener('click', () => {
-      if (!currentStream) {
-        alert("Camera stream is not active. Please verify camera permissions or use the server fallback button.");
-        return;
-      }
-
-      sounds.playScan();
-      captureBtn.disabled = true;
-      captureBtn.innerHTML = "⏳ Vectorizing Face...";
-
-      // Trigger shutter flash animation
-      flashOverlay.style.background = 'white';
-      flashOverlay.style.opacity = '0.8';
-      flashOverlay.style.transition = 'opacity 0.25s ease-out';
-      setTimeout(() => {
-        sounds.playShutter();
-        flashOverlay.style.opacity = '0';
-      }, 50);
-
-      setTimeout(() => {
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        const ctx = canvas.getContext('2d');
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        imageDataInput.value = dataUrl;
-        browserForm.submit();
-      }, 250);
-    });
-
-    // Sound toggle
-    const soundBtn = document.getElementById('soundBtn');
-    function updateSoundBtn() {
-      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    function doCapture(){
+      if(!currentStream){ alert("Camera not active. Check permission or use server fallback."); sounds.playError(); return; }
+      captureBtn.disabled=true; captureBtn.textContent="⏳ Vectorizing…";
+      flashOverlay.style.opacity='0.75'; setTimeout(()=>{ flashOverlay.style.opacity='0'; try{sounds.playShutter()}catch(e){} },80);
+      setTimeout(()=>{
+        canvas.width=video.videoWidth||1280; canvas.height=video.videoHeight||720;
+        const ctx=canvas.getContext('2d');
+        if(mirrored){ ctx.translate(canvas.width,0); ctx.scale(-1,1); }
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.92);
+        // Show preview overlay with retake option
+        previewImg.src=dataUrl; previewOverlay.style.display='block';
+        imageDataInput.value=dataUrl;
+        // Auto submit after 0.6s unless user retakes
+        setTimeout(()=>{ browserForm.submit(); }, 550);
+      }, 220);
     }
-    soundBtn.addEventListener('click', () => {
-      sounds.toggleMute();
-      updateSoundBtn();
-      sounds.playClick();
+    captureBtn.addEventListener('click', doCapture);
+    retakeOverlayBtn.addEventListener('click', ()=>{
+      previewOverlay.style.display='none'; imageDataInput.value=''; captureBtn.disabled=false; captureBtn.textContent="🎯 Verify Biometrics & Mark Attendance"; sounds.playClick();
     });
+    document.addEventListener('keydown', e=>{
+      if((e.code==='Space' || e.key===' ') && !e.repeat && document.activeElement.tagName!=='INPUT'){ e.preventDefault(); doCapture(); }
+      if(e.key.toLowerCase()==='f' && document.activeElement.tagName!=='INPUT'){ if(!document.fullscreenElement) viewport.requestFullscreen(); else document.exitFullscreen(); }
+    });
+
+    // Auto 3s
+    autoBtn.addEventListener('click', ()=>{
+      if(!currentStream) return sounds.playError();
+      if(autoTimer){ clearInterval(autoTimer); autoTimer=null; countdownOverlay.style.display='none'; autoBtn.textContent='⏱ Auto 3s'; return; }
+      let n=3; countdownOverlay.textContent=n; countdownOverlay.style.display='flex'; autoBtn.textContent='⏹ Cancel';
+      autoTimer=setInterval(()=>{ n--; if(n>0){ countdownOverlay.textContent=n; try{sounds.playClick()}catch(e){} } else { clearInterval(autoTimer); autoTimer=null; countdownOverlay.style.display='none'; autoBtn.textContent='⏱ Auto 3s'; doCapture(); } }, 900);
+    });
+
+    flipBtn.addEventListener('click', ()=>{
+      mirrored=!mirrored; video.style.transform=mirrored?'scaleX(-1)':'none'; previewImg.style.transform=mirrored?'scaleX(-1)':'none'; sounds.playClick(); flipBtn.textContent=mirrored?'🔄 Mirror: ON':'🔄 Mirror: OFF';
+    });
+    fullscreenBtn.addEventListener('click', ()=>{
+      if(!document.fullscreenElement) viewport.requestFullscreen(); else document.exitFullscreen(); sounds.playClick();
+    });
+
+    const soundBtn=document.getElementById('soundBtn');
+    function updateSoundBtn(){ soundBtn.textContent=sounds.isMuted()?'🔇':'🔊'; }
+    soundBtn.addEventListener('click', ()=>{ sounds.toggleMute(); updateSoundBtn(); sounds.playClick(); });
     updateSoundBtn();
   </script>
 </body>
