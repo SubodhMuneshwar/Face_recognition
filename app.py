@@ -233,6 +233,10 @@ def inject_user():
 
 # ==================== PUBLIC ROUTES ====================
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 @app.route("/")
 def home():
     if "username" in session:
