@@ -3,31 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - VisionPass</title>
+  <title>Dashboard - VisionPass AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <div class="bg-mesh"></div>
+  <canvas id="bgCanvas"></canvas>
+
   <nav class="navbar">
-    <a href="/" class="brand">
+    <a href="/" class="brand" onclick="sounds.playClick()">
       <div class="brand-icon">⚡</div>
       <span>VisionPass AI</span>
     </a>
     <div class="nav-links">
-      <span style="font-size: 0.9rem; color: var(--text-muted);">Signed in as <strong style="color: var(--text-main);">{{ username }}</strong></span>
-      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
+      <button class="sound-toggle" id="soundBtn" title="Toggle UI Sound FX">🔊</button>
+      <div style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); padding: 0.35rem 0.85rem; border-radius: 9999px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-emerald);"></span>
+        <span style="font-size: 0.85rem; font-weight: 600;">{{ username }}</span>
+      </div>
+      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="sounds.playClick()">Logout</a>
     </div>
   </nav>
 
-  <main class="main-wrapper" style="justify-content: flex-start; padding-top: 3rem;">
+  <main class="main-wrapper" style="justify-content: flex-start; padding-top: 2.5rem;">
     <div class="glass-card wide">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+      
+      <!-- Header Banner -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
         <div>
-          <h2 class="title-gradient" style="font-size: 2rem;">Welcome, {{ username }}!</h2>
-          <p class="subtitle" style="margin: 0.25rem 0 0 0;">Manage your attendance records and biometric verification</p>
+          <div style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-cyan); font-weight: 700; margin-bottom: 0.25rem;">
+            <span>●</span> Biometric Console
+          </div>
+          <h2 class="title-gradient" style="font-size: 2.2rem;">Welcome back, {{ username }}</h2>
+          <p class="subtitle" style="margin: 0.2rem 0 0 0;">View verified attendance history and launch real-time scanning</p>
         </div>
-        <div style="display: flex; gap: 0.75rem;">
-          <a href="/mark_attendance" class="btn btn-success" style="width: auto; padding: 0.75rem 1.5rem;">
-            📸 Biometric Scanner
+
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <a href="/download_attendance" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.25rem;" title="Download attendance.xlsx" onclick="sounds.playClick()">
+            📊 Export Excel
+          </a>
+          <a href="/mark_attendance" class="btn btn-success" style="width: auto; padding: 0.75rem 1.5rem;" onclick="sounds.playClick()">
+            📸 Open Scanner
           </a>
         </div>
       </div>
@@ -44,57 +60,82 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Quick Info Cards -->
+      <!-- Metrics Cards -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
-          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Biometric Status</div>
-          <div style="font-size: 1.2rem; font-weight: 700; color: {% if has_face %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; margin-top: 0.35rem;">
-            {% if has_face %}Enrolled (Active){% else %}Pending Photo{% endif %}
+        
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Biometric State</div>
+          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: {% if has_face %}var(--accent-emerald){% else %}var(--accent-amber){% endif %}; margin-top: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span>{% if has_face %}Enrolled (Active){% else %}Pending Photo{% endif %}</span>
+            <span style="font-size: 1.1rem;">{% if has_face %}✓{% else %}⚠️{% endif %}</span>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
+            {% if has_face %}128-d reference encoding active{% else %}Register a face in known_faces{% endif %}
           </div>
         </div>
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
-          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Total Logs</div>
-          <div style="font-size: 1.2rem; font-weight: 700; color: var(--accent-cyan); margin-top: 0.35rem;">
-            {{ attendance_records|length }} Check-ins
+
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Your Check-Ins</div>
+          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: var(--accent-cyan); margin-top: 0.4rem;">
+            <span id="counterLog">{{ attendance_records|length }}</span> Verified
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
+            Synced with attendance.xlsx
           </div>
         </div>
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
-          <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-dim); font-weight: 600;">Storage Target</div>
-          <div style="font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-top: 0.35rem;">
+
+        <div style="background: rgba(10, 15, 28, 0.75); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.4rem; position: relative; overflow: hidden;">
+          <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Storage Destination</div>
+          <div style="font-size: 1.4rem; font-weight: 800; font-family: 'Outfit'; color: #a5b4fc; margin-top: 0.4rem;">
             attendance.xlsx
           </div>
+          <div style="font-size: 0.78rem; color: var(--text-dim); margin-top: 0.25rem;">
+            Local filesystem spreadsheet
+          </div>
         </div>
+
       </div>
 
-      <!-- Attendance Records Table -->
-      <div>
-        <h3 style="font-size: 1.2rem; margin-bottom: 0.75rem;">Your Attendance Logs</h3>
+      <!-- Logs Section with Real-Time Search -->
+      <div style="margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+          <h3 style="font-size: 1.25rem; font-family: 'Outfit';">Attendance Records</h3>
+          
+          <div style="position: relative; width: 100%; max-width: 280px;">
+            <input type="text" id="searchLogs" class="input-control" placeholder="Search by date or time..." style="padding: 0.5rem 0.9rem; font-size: 0.85rem;">
+          </div>
+        </div>
+
         <div class="table-responsive">
-          <table class="custom-table">
+          <table class="custom-table" id="logsTable">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Name</th>
+                <th>Identity</th>
                 <th>Date</th>
-                <th>Time</th>
-                <th>Status</th>
+                <th>Timestamp</th>
+                <th>Verification</th>
               </tr>
             </thead>
             <tbody>
               {% if attendance_records %}
                 {% for record in attendance_records %}
                   <tr>
-                    <td>{{ loop.index }}</td>
+                    <td style="color: var(--text-dim);">{{ loop.index }}</td>
                     <td><strong style="color: var(--text-main);">{{ record.name }}</strong></td>
-                    <td>{{ record.date }}</td>
-                    <td>{{ record.time }}</td>
-                    <td><span class="badge badge-success">Verified</span></td>
+                    <td class="log-date">{{ record.date }}</td>
+                    <td class="log-time">{{ record.time }}</td>
+                    <td>
+                      <span class="badge badge-success">
+                        <span>●</span> Biometric Pass
+                      </span>
+                    </td>
                   </tr>
                 {% endfor %}
               {% else %}
-                <tr>
-                  <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2rem;">
-                    No attendance logs recorded yet. Click "Biometric Scanner" to mark your first attendance!
+                <tr id="emptyRow">
+                  <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 2.5rem;">
+                    No attendance logs found yet. Click <strong>Open Scanner</strong> above to record your attendance!
                   </td>
                 </tr>
               {% endif %}
@@ -102,11 +143,43 @@
           </table>
         </div>
       </div>
+
     </div>
   </main>
 
   <footer>
-    VisionPass Biometric Attendance System &bull; Live Dashboard
+    VisionPass Biometric Attendance System &bull; Live Audit Logs
   </footer>
+
+  <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+  <script>
+    // Live table search filtering
+    const searchInput = document.getElementById('searchLogs');
+    const table = document.getElementById('logsTable');
+    if (searchInput && table) {
+      searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase();
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(r => {
+          if (r.id === 'emptyRow') return;
+          const text = r.textContent.toLowerCase();
+          r.style.display = text.includes(query) ? '' : 'none';
+        });
+      });
+    }
+
+    // Sound toggle
+    const soundBtn = document.getElementById('soundBtn');
+    function updateSoundBtn() {
+      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    }
+    soundBtn.addEventListener('click', () => {
+      sounds.toggleMute();
+      updateSoundBtn();
+      sounds.playClick();
+    });
+    updateSoundBtn();
+  </script>
 </body>
 </html>

@@ -3,24 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - VisionPass</title>
+  <title>Login - VisionPass AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <div class="bg-mesh"></div>
+  <canvas id="bgCanvas"></canvas>
+
   <nav class="navbar">
-    <a href="/" class="brand">
+    <a href="/" class="brand" onclick="sounds.playClick()">
       <div class="brand-icon">⚡</div>
       <span>VisionPass AI</span>
     </a>
     <div class="nav-links">
-      <a href="/register" class="btn btn-secondary" style="width: auto; padding: 0.6rem 1.2rem;">Register</a>
+      <button class="sound-toggle" id="soundBtn" title="Toggle UI Sound FX">🔊</button>
+      <a href="/register" class="btn btn-secondary" style="width: auto; padding: 0.6rem 1.25rem;" onclick="sounds.playClick()">Create Account</a>
     </div>
   </nav>
 
   <main class="main-wrapper">
     <div class="glass-card">
-      <h2 class="title-gradient" style="font-size: 1.8rem; margin-bottom: 0.3rem;">Welcome Back</h2>
-      <p class="subtitle">Enter your credentials to access your attendance portal</p>
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <div style="width: 50px; height: 50px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.75rem;">
+          🔐
+        </div>
+        <h2 class="title-gradient" style="font-size: 2rem; margin-bottom: 0.25rem;">Sign In</h2>
+        <p class="subtitle" style="margin-bottom: 0;">Access your biometric attendance console</p>
+      </div>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -34,34 +43,81 @@
         {% endif %}
       {% endwith %}
 
-      <form method="POST" action="/login">
+      <form method="POST" action="/login" id="loginForm">
         <div class="form-group">
           <label for="username">Username</label>
-          <input type="text" id="username" name="username" class="input-control" placeholder="e.g. nihar or student" required autofocus>
+          <div class="input-wrapper">
+            <input type="text" id="username" name="username" class="input-control" placeholder="Enter username" required autofocus>
+          </div>
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" class="input-control" placeholder="••••••••" required>
+          <div class="input-wrapper">
+            <input type="password" id="password" name="password" class="input-control" placeholder="••••••••" required>
+            <button type="button" class="password-toggle-btn" id="togglePasswordBtn" title="Toggle password visibility">
+              👁️
+            </button>
+          </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
-          Sign In →
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.25rem;" onclick="sounds.playClick()">
+          Authenticate →
         </button>
       </form>
 
-      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.88rem; color: var(--text-muted);">
-        Don't have an account? <a href="{{ url_for('register') }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">Register here</a>
+      <!-- Quick Demo Credentials Filler -->
+      <div style="margin-top: 1.5rem; padding: 0.85rem; border-radius: var(--radius-md); background: rgba(99, 102, 241, 0.08); border: 1px dashed rgba(99, 102, 241, 0.3); display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 0.82rem; color: var(--text-muted);">
+          Demo Account: <strong style="color: var(--text-main);">student</strong>
+        </div>
+        <button type="button" id="fillDemoBtn" class="btn btn-secondary" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+          Auto-Fill
+        </button>
       </div>
 
-      <div style="margin-top: 1.25rem; padding: 0.75rem; border-radius: var(--radius-sm); background: rgba(99, 102, 241, 0.08); border: 1px dashed rgba(99, 102, 241, 0.25); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
-        💡 Default test user: <strong style="color: var(--text-main);">student</strong> / <strong style="color: var(--text-main);">student123</strong>
+      <div style="margin-top: 1.5rem; text-align: center; font-size: 0.88rem; color: var(--text-muted);">
+        Need an account? <a href="{{ url_for('register') }}" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600;" onclick="sounds.playClick()">Enroll Face Here</a>
       </div>
     </div>
   </main>
 
   <footer>
-    VisionPass Biometric Attendance System &bull; Secure Authentication
+    VisionPass Biometric Intelligence &bull; Secured with SHA-256 Hashes
   </footer>
+
+  <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+  <script>
+    // Password toggle
+    const pwdInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = pwdInput.type === 'password';
+      pwdInput.type = isPassword ? 'text' : 'password';
+      toggleBtn.textContent = isPassword ? '🙈' : '👁️';
+      sounds.playClick();
+    });
+
+    // Auto-fill demo
+    const fillBtn = document.getElementById('fillDemoBtn');
+    fillBtn.addEventListener('click', () => {
+      document.getElementById('username').value = 'student';
+      document.getElementById('password').value = 'student123';
+      sounds.playClick();
+    });
+
+    // Sound toggle
+    const soundBtn = document.getElementById('soundBtn');
+    function updateSoundBtn() {
+      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    }
+    soundBtn.addEventListener('click', () => {
+      sounds.toggleMute();
+      updateSoundBtn();
+      sounds.playClick();
+    });
+    updateSoundBtn();
+  </script>
 </body>
 </html>

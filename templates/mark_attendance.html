@@ -3,25 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biometric Verification - VisionPass</title>
+  <title>Biometric Scanner - VisionPass AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <div class="bg-mesh"></div>
+  <canvas id="bgCanvas"></canvas>
+
   <nav class="navbar">
-    <a href="/" class="brand">
+    <a href="/" class="brand" onclick="sounds.playClick()">
       <div class="brand-icon">⚡</div>
       <span>VisionPass AI</span>
     </a>
     <div class="nav-links">
-      <a href="/dashboard" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">← Dashboard</a>
-      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">Logout</a>
+      <button class="sound-toggle" id="soundBtn" title="Toggle UI Sound FX">🔊</button>
+      <a href="/dashboard" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="sounds.playClick()">← Dashboard</a>
+      <a href="/logout" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" onclick="sounds.playClick()">Logout</a>
     </div>
   </nav>
 
   <main class="main-wrapper">
-    <div class="glass-card" style="max-width: 600px; text-align: center;">
-      <h2 class="title-gradient" style="font-size: 1.8rem; margin-bottom: 0.25rem;">Biometric Attendance Scanner</h2>
-      <p class="subtitle" style="margin-bottom: 1.25rem;">Align your face within the frame and ensure good lighting</p>
+    <div class="glass-card" style="max-width: 620px; text-align: center;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <div style="text-align: left;">
+          <h2 class="title-gradient" style="font-size: 1.85rem; margin-bottom: 0.15rem;">Optical Face Scanner</h2>
+          <p class="subtitle" style="margin-bottom: 0; font-size: 0.85rem;">Target identity: <strong style="color: var(--text-main);">{{ username }}</strong></p>
+        </div>
+
+        <!-- Camera Device Switcher -->
+        <div style="text-align: right;">
+          <select id="cameraSelect" class="input-control" style="width: auto; padding: 0.4rem 0.75rem; font-size: 0.78rem; background: rgba(0,0,0,0.5);">
+            <option value="">Detecting cameras...</option>
+          </select>
+        </div>
+      </div>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -35,40 +51,58 @@
         {% endif %}
       {% endwith %}
 
-      <!-- Scanner Viewport -->
-      <div class="scanner-box" id="scannerContainer">
+      <!-- Futuristic HUD Viewport -->
+      <div class="scanner-container" id="scannerViewport">
         <video id="webcam" autoplay playsinline muted class="scanner-video"></video>
         <canvas id="snapshotCanvas" style="display: none;"></canvas>
-        <div class="scanner-overlay">
+        <div id="flashOverlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0;"></div>
+
+        <!-- Sci-Fi HUD Overlay Elements -->
+        <div class="scanner-hud">
+          <!-- Brackets -->
+          <div class="hud-corner hud-top-left"></div>
+          <div class="hud-corner hud-top-right"></div>
+          <div class="hud-corner hud-bottom-left"></div>
+          <div class="hud-corner hud-bottom-right"></div>
+
+          <!-- Status badge -->
+          <div class="hud-status-badge">
+            <span class="pulse-dot"></span>
+            <span id="hudStatusText">Live Feed Active</span>
+          </div>
+
+          <!-- Biometric Reticle & Laser -->
           <div class="scanner-reticle">
             <div class="scanner-laser"></div>
+          </div>
+
+          <!-- Telemetry string -->
+          <div class="hud-telemetry">
+            OPTICAL FEED // 128-D VECTOR // VERIFY: {{ username|upper }}
           </div>
         </div>
       </div>
 
-      <div id="cameraStatus" style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem;">
-        Initializing camera feed...
+      <div id="cameraStatus" style="font-size: 0.85rem; color: #34d399; margin-bottom: 1.25rem;">
+        Camera online. Align your face inside the reticle and click below.
       </div>
 
       <!-- Browser Camera Form -->
       <form id="browserAttendanceForm" method="POST" action="/mark_attendance">
         <input type="hidden" name="image_data" id="imageDataInput">
-        <button type="button" id="captureBtn" class="btn btn-primary" style="margin-bottom: 0.75rem;">
-          🎯 Scan & Verify Face
+        <button type="button" id="captureBtn" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.05rem; margin-bottom: 0.85rem;">
+          🎯 Verify Biometrics & Mark Attendance
         </button>
       </form>
 
       <!-- Server Camera Fallback Form -->
       <form method="POST" action="/mark_attendance" id="serverForm">
         <input type="hidden" name="mode" value="server">
-        <button type="submit" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.6rem;">
-          📷 Fallback: Capture via Server Webcam (OpenCV)
+        <button type="submit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 0.6rem 1rem;" onclick="sounds.playClick()">
+          📷 Fallback: Capture using Server Webcam (OpenCV)
         </button>
       </form>
 
-      <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--text-dim);">
-        Target identity: <strong style="color: var(--text-main);">{{ username }}</strong>
-      </div>
     </div>
   </main>
 
@@ -76,6 +110,8 @@
     VisionPass Biometric Attendance System &bull; Live Optical Sensor
   </footer>
 
+  <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
   <script>
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('snapshotCanvas');
@@ -83,61 +119,116 @@
     const imageDataInput = document.getElementById('imageDataInput');
     const browserForm = document.getElementById('browserAttendanceForm');
     const cameraStatus = document.getElementById('cameraStatus');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const flashOverlay = document.getElementById('flashOverlay');
+    const hudStatus = document.getElementById('hudStatusText');
 
-    let streamActive = false;
+    let currentStream = null;
 
-    // Request browser webcam stream
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 640 }, 
-          height: { ideal: 480 },
-          facingMode: "user" 
-        } 
-      })
-      .then(function(stream) {
-        video.srcObject = stream;
-        video.play();
-        streamActive = true;
-        cameraStatus.textContent = "Live feed active. Center your face and click 'Scan & Verify Face'.";
-        cameraStatus.style.color = "#34d399";
-      })
-      .catch(function(err) {
-        console.warn("Browser camera access error:", err);
-        cameraStatus.textContent = "Browser camera not accessible (" + err.message + "). You can use the OpenCV fallback below.";
-        cameraStatus.style.color = "#fb7185";
-      });
-    } else {
-      cameraStatus.textContent = "Browser camera API not supported. Please use the OpenCV server fallback.";
-      cameraStatus.style.color = "#fb7185";
+    // Discover cameras
+    async function getCameras() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        cameraSelect.innerHTML = '';
+        if (videoDevices.length === 0) {
+          cameraSelect.innerHTML = '<option value="">Default Camera</option>';
+          return;
+        }
+        videoDevices.forEach((dev, idx) => {
+          const opt = document.createElement('option');
+          opt.value = dev.deviceId;
+          opt.textContent = dev.label || `Camera ${idx + 1}`;
+          cameraSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.warn("Could not enumerate devices:", err);
+      }
     }
 
-    // Handle snapshot capture
-    captureBtn.addEventListener('click', function() {
-      if (!streamActive) {
-        alert("Live camera feed is not ready. Please check camera permissions or use the OpenCV fallback button.");
+    // Start video with chosen deviceId
+    async function startStream(deviceId = null) {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+      
+      const constraints = {
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        }
+      };
+
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        await video.play();
+        cameraStatus.textContent = "Live optical feed ready. Center your face and trigger verification.";
+        cameraStatus.style.color = "#34d399";
+        hudStatus.textContent = "Feed Active";
+        await getCameras();
+      } catch (err) {
+        console.warn("Camera access error:", err);
+        cameraStatus.textContent = "Browser camera access denied or busy. Use the OpenCV server fallback below.";
+        cameraStatus.style.color = "#fb7185";
+        hudStatus.textContent = "Camera Offline";
+      }
+    }
+
+    startStream();
+
+    cameraSelect.addEventListener('change', () => {
+      sounds.playClick();
+      startStream(cameraSelect.value);
+    });
+
+    // Capture & Submit
+    captureBtn.addEventListener('click', () => {
+      if (!currentStream) {
+        alert("Camera stream is not active. Please verify camera permissions or use the server fallback button.");
         return;
       }
 
+      sounds.playScan();
       captureBtn.disabled = true;
-      captureBtn.innerHTML = "⏳ Processing Biometrics...";
+      captureBtn.innerHTML = "⏳ Vectorizing Face...";
 
-      // Draw current video frame to hidden canvas
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
-      const ctx = canvas.getContext('2d');
-      // Un-mirror image for correct facial alignment
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Trigger shutter flash animation
+      flashOverlay.style.background = 'white';
+      flashOverlay.style.opacity = '0.8';
+      flashOverlay.style.transition = 'opacity 0.25s ease-out';
+      setTimeout(() => {
+        sounds.playShutter();
+        flashOverlay.style.opacity = '0';
+      }, 50);
 
-      // Convert canvas frame to JPEG base64 data URL
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-      imageDataInput.value = dataUrl;
+      setTimeout(() => {
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Submit form
-      browserForm.submit();
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        imageDataInput.value = dataUrl;
+        browserForm.submit();
+      }, 250);
     });
+
+    // Sound toggle
+    const soundBtn = document.getElementById('soundBtn');
+    function updateSoundBtn() {
+      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    }
+    soundBtn.addEventListener('click', () => {
+      sounds.toggleMute();
+      updateSoundBtn();
+      sounds.playClick();
+    });
+    updateSoundBtn();
   </script>
 </body>
 </html>

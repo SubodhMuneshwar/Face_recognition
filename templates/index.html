@@ -3,67 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VisionPass - Biometric Attendance System</title>
+  <title>VisionPass AI - Biometric Facial Attendance</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <div class="bg-mesh"></div>
+  <canvas id="bgCanvas"></canvas>
+
   <nav class="navbar">
-    <a href="/" class="brand">
+    <a href="/" class="brand" onclick="sounds.playClick()">
       <div class="brand-icon">⚡</div>
       <span>VisionPass AI</span>
     </a>
     <div class="nav-links">
-      <a href="/login" class="btn btn-secondary" style="width: auto; padding: 0.6rem 1.2rem;">Login</a>
-      <a href="/register" class="btn btn-primary" style="width: auto; padding: 0.6rem 1.2rem;">Register</a>
+      <button class="sound-toggle" id="soundBtn" title="Toggle UI Sound FX">🔊</button>
+      <a href="/login" class="btn btn-secondary" style="width: auto; padding: 0.6rem 1.25rem;" onclick="sounds.playClick()">Sign In</a>
+      <a href="/register" class="btn btn-primary" style="width: auto; padding: 0.6rem 1.25rem;" onclick="sounds.playClick()">Get Started</a>
     </div>
   </nav>
 
   <main class="main-wrapper">
-    <div class="glass-card" style="text-align: center; max-width: 580px;">
-      <div style="font-size: 3rem; margin-bottom: 1rem;">🛡️</div>
-      <h1 class="title-gradient" style="font-size: 2.2rem; margin-bottom: 0.5rem;">Automated Face Attendance</h1>
-      <p class="subtitle" style="margin-bottom: 2rem;">
-        Intelligent facial recognition for instant, contact-free attendance logging. Secured with deep biometric verification.
+    <div class="glass-card" style="text-align: center; max-width: 680px; padding: 3rem 2.5rem;">
+      
+      <!-- Top Status Pill -->
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 9999px; padding: 0.35rem 1rem; margin-bottom: 1.5rem;">
+        <span class="pulse-dot" style="background: var(--accent-emerald); box-shadow: 0 0 8px var(--accent-emerald);"></span>
+        <span style="font-size: 0.8rem; font-weight: 600; color: #a5b4fc; text-transform: uppercase; letter-spacing: 0.05em;">AI Neural Vision Active</span>
+      </div>
+
+      <h1 class="title-gradient" style="font-size: 2.8rem; line-height: 1.15; margin-bottom: 0.85rem;">
+        Contactless Biometric Attendance
+      </h1>
+      
+      <p class="subtitle" style="font-size: 1.05rem; max-width: 520px; margin: 0 auto 2.25rem auto;">
+        Real-time facial vectorization, instant student & employee verification, and automatic Excel synchronization.
       </p>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="alerts-container">
             {% for category, message in messages %}
-              <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">{{ message }}</div>
+              <div class="alert alert-{{ 'error' if category in ['error', 'danger'] else ('success' if category == 'success' else 'info') }}">
+                {{ message }}
+              </div>
             {% endfor %}
           </div>
         {% endif %}
       {% endwith %}
 
-      <div style="display: flex; gap: 1rem; flex-direction: column;">
-        <a href="/login" class="btn btn-primary">
-          <span>Sign In to Your Account</span> →
+      <!-- Primary Action Buttons -->
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/login" class="btn btn-primary" style="flex: 1; min-width: 200px; padding: 1rem 1.5rem;" onclick="sounds.playClick()">
+          <span>Launch Portal</span>
+          <span style="font-size: 1.1rem;">→</span>
         </a>
-        <a href="/register" class="btn btn-secondary">
-          <span>Create New Account</span>
+        <a href="/register" class="btn btn-secondary" style="flex: 1; min-width: 200px; padding: 1rem 1.5rem;" onclick="sounds.playClick()">
+          <span>Enroll New Face</span>
+          <span>👤</span>
         </a>
       </div>
 
-      <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; text-align: left;">
-        <div>
-          <div style="font-weight: 700; color: var(--accent-cyan);">Instant</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">Real-time frame matching</div>
+      <!-- Live Interactive Biometric Demo Graphic -->
+      <div style="margin-top: 2.5rem; background: rgba(5, 8, 18, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #eab308;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></div>
+          </div>
+          <span style="font-family: 'Outfit', monospace; font-size: 0.75rem; color: var(--accent-cyan);">ENGINE: DLIB 128D EMBEDDINGS</span>
         </div>
-        <div>
-          <div style="font-weight: 700; color: var(--accent-emerald);">Excel Synced</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">Automatic spreadsheet logs</div>
-        </div>
-        <div>
-          <div style="font-weight: 700; color: var(--primary);">Secure</div>
-          <div style="font-size: 0.8rem; color: var(--text-muted);">128-d facial embeddings</div>
+
+        <div style="display: flex; justify-content: space-around; align-items: center; padding: 0.5rem 0;">
+          <div style="text-align: center;">
+            <div style="font-size: 1.7rem; font-weight: 800; color: var(--accent-cyan); font-family: 'Outfit';">128-d</div>
+            <div style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase;">Biometric Vector</div>
+          </div>
+          <div style="width: 1px; height: 40px; background: var(--border-color);"></div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.7rem; font-weight: 800; color: var(--accent-emerald); font-family: 'Outfit';">&lt;0.2s</div>
+            <div style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase;">Verification Speed</div>
+          </div>
+          <div style="width: 1px; height: 40px; background: var(--border-color);"></div>
+          <div style="text-align: center;">
+            <div style="font-size: 1.7rem; font-weight: 800; color: var(--primary); font-family: 'Outfit';">100%</div>
+            <div style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase;">Local & Private</div>
+          </div>
         </div>
       </div>
+
     </div>
   </main>
 
   <footer>
-    VisionPass Biometric Attendance System &bull; Powered by Flask & OpenCV
+    VisionPass Biometric Intelligence &bull; Powered by Flask, OpenCV & Deep Learning
   </footer>
+
+  <script src="{{ url_for('static', filename='js/sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/particles.js') }}"></script>
+  <script>
+    const soundBtn = document.getElementById('soundBtn');
+    function updateSoundBtn() {
+      soundBtn.textContent = sounds.isMuted() ? '🔇' : '🔊';
+    }
+    soundBtn.addEventListener('click', () => {
+      sounds.toggleMute();
+      updateSoundBtn();
+      sounds.playClick();
+    });
+    updateSoundBtn();
+  </script>
 </body>
 </html>

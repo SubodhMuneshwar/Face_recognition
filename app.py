@@ -6,7 +6,7 @@ import openpyxl
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 import face_recognition
 
@@ -171,10 +171,30 @@ def register():
         db.session.add(new_user)
         db.session.commit()
 
-        # Handle face enrollment photo
+        # Handle face enrollment photo (either uploaded file or webcam snapshot)
         file = request.files.get("face_image")
+        webcam_data = request.form.get("webcam_face_data")
         photo_saved = False
-        if file and file.filename != "":
+
+        if webcam_data and "base64," in webcam_data:
+            try:
+                base64_str = webcam_data.split("base64,")[1]
+                img_bytes = base64.b64decode(base64_str)
+                target_filename = f"{secure_filename(username)}.jpg"
+                target_path = os.path.join(images_dir, target_filename)
+                with open(target_path, "wb") as f:
+                    f.write(img_bytes)
+                loaded_img = face_recognition.load_image_file(target_path)
+                encs = face_recognition.face_encodings(loaded_img)
+                if len(encs) > 0:
+                    photo_saved = True
+                    load_known_faces()
+                else:
+                    flash("Account created, but no face was detected in your camera snapshot.", "warning")
+            except Exception as e:
+                print(f"Error checking camera snapshot: {e}")
+
+        elif file and file.filename != "":
             ext = os.path.splitext(file.filename)[1].lower()
             if ext in ['.jpg', '.jpeg', '.png', '.webp']:
                 target_filename = f"{secure_filename(username)}{ext}"
@@ -200,6 +220,15 @@ def register():
         return redirect(url_for("login"))
 
     return render_template("register.html")
+
+@app.route("/download_attendance")
+def download_attendance():
+    if "username" not in session:
+        return redirect(url_for("login"))
+    if os.path.exists(attendance_file):
+        return send_file(attendance_file, as_attachment=True, download_name="attendance.xlsx")
+    flash("Attendance log file not found.", "error")
+    return redirect(url_for("dashboard"))
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
