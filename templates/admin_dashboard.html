@@ -133,6 +133,7 @@
               <tr>
                 <th>ID</th>
                 <th>Username</th>
+                <th>Email</th>
                 <th>Current Role</th>
                 <th>Change Role</th>
                 <th>Actions</th>
@@ -145,6 +146,9 @@
                   <td>
                     <strong style="color: var(--text-main); font-size: 0.95rem;">{{ u.username }}</strong>
                     {% if u.username == username %}<span style="font-size: 0.75rem; color: var(--accent-cyan);">(You)</span>{% endif %}
+                  </td>
+                  <td>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">{{ u.email or '—' }}</span>
                   </td>
                   <td>
                     {% if u.role == 'admin' %}

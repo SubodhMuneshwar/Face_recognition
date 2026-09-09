@@ -52,6 +52,28 @@
         </div>
 
         <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" class="input-control" placeholder="e.g. john@example.com" required>
+          <!-- Dynamic @teach.com hint for teacher role -->
+          <div id="teacherEmailHint" style="display: none; font-size: 0.78rem; color: var(--accent-amber); margin-top: 6px; padding: 0.4rem 0.65rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-sm);">
+            🔒 Teacher accounts require an institutional email ending with <strong>@teach.com</strong>
+          </div>
+          <!-- Email validation error (client-side) -->
+          <div id="emailDomainError" class="alert alert-error" style="display: none; margin-top: 6px; margin-bottom: 0; font-size: 0.82rem; padding: 0.5rem 0.75rem;">
+            ⚠️ Teacher registration requires an @teach.com email address.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="role">Account Role</label>
+          <select id="role" name="role" class="input-control" required>
+            <option value="student">🎒 Student / Employee (Attendee)</option>
+            <option value="teacher">🎓 Teacher / Manager (Supervisor)</option>
+          </select>
+          <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 4px;">Admin accounts can only be provisioned via the Admin Dashboard</div>
+        </div>
+
+        <div class="form-group">
           <label for="password">Password</label>
           <div class="input-wrapper">
             <input type="password" id="password" name="password" class="input-control" placeholder="Create strong password" required>
@@ -337,11 +359,63 @@
       sounds.playClick();
     });
 
-    // Form Submission Validation for Required Face Biometric Capture
+    // Role & Email domain validation
+    const roleSelect = document.getElementById('role');
+    const emailInput = document.getElementById('email');
+    const teacherHint = document.getElementById('teacherEmailHint');
+    const emailDomainError = document.getElementById('emailDomainError');
+
+    function updateRoleHints() {
+      const isTeacher = roleSelect.value === 'teacher';
+      teacherHint.style.display = isTeacher ? 'block' : 'none';
+      emailDomainError.style.display = 'none'; // Reset error on role change
+
+      // Highlight email field border when teacher is selected
+      if (isTeacher) {
+        emailInput.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+      } else {
+        emailInput.style.borderColor = '';
+      }
+    }
+
+    roleSelect.addEventListener('change', () => {
+      updateRoleHints();
+      sounds.playClick();
+    });
+
+    // Also validate email domain live when typing (for teacher role)
+    emailInput.addEventListener('input', () => {
+      if (roleSelect.value === 'teacher') {
+        const email = emailInput.value.trim().toLowerCase();
+        if (email.length > 0 && !email.endsWith('@teach.com')) {
+          emailDomainError.style.display = 'flex';
+          emailInput.style.borderColor = 'rgba(244, 63, 94, 0.6)';
+        } else {
+          emailDomainError.style.display = 'none';
+          emailInput.style.borderColor = email.endsWith('@teach.com') ? 'rgba(52, 211, 153, 0.5)' : 'rgba(245, 158, 11, 0.5)';
+        }
+      }
+    });
+
+    // Form Submission Validation for Required Face Biometric Capture + Teacher Email
     const regForm = document.getElementById('regForm');
     const biometricAlert = document.getElementById('biometricRequiredAlert');
 
     regForm.addEventListener('submit', (e) => {
+      // 1. Teacher email domain validation
+      if (roleSelect.value === 'teacher') {
+        const email = emailInput.value.trim().toLowerCase();
+        if (!email.endsWith('@teach.com')) {
+          e.preventDefault();
+          sounds.playError();
+          emailDomainError.style.display = 'flex';
+          emailInput.style.borderColor = 'rgba(244, 63, 94, 0.6)';
+          emailDomainError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return false;
+        }
+      }
+
+      // 2. Face biometric validation
       const hasWebcamSnapshot = hiddenData.value && hiddenData.value.trim() !== '';
       const hasUploadedFile = fileInput.files && fileInput.files.length > 0;
 
@@ -354,6 +428,7 @@
       }
 
       biometricAlert.style.display = 'none';
+      emailDomainError.style.display = 'none';
     });
 
     // Sound toggle

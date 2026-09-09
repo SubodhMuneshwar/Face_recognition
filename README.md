@@ -69,7 +69,13 @@ This project was collaboratively engineered and developed by:
 * **Drag-and-Drop Upload**: Dropzone with instantaneous thumbnail generation.
 * **Strict Biometric Enforcement**: Registrations are rejected if no clear human face is detected in the capture, ensuring database integrity.
 
-### 5. 📊 Automatic Excel Logging
+### 5. 📧 Email & Role-Based Self Registration
+* **Email Verification**: All new accounts must provide a valid email address during registration. Duplicate emails are automatically rejected.
+* **Role Selection**: Users choose their account type during sign-up — **Student/Employee** or **Teacher/Manager**.
+* **Institutional Email Authentication**: Teacher/Manager accounts are restricted to institutional emails ending with `@teach.com`. Attempts to register as a Teacher with any other domain are blocked both client-side (with real-time validation and visual cues) and server-side.
+* **Admin-Only Provisioning**: Administrator accounts cannot be created via public registration — they can only be provisioned through the Master Admin Dashboard.
+
+### 6. 📊 Automatic Excel Logging
 * Attendance records are logged in real-time to [attendance.xlsx](file:///c:/Users/DELL/Desktop/Face_recognition/attendance.xlsx) with timestamps (`Name`, `Date`, `Time`).
 
 ---
@@ -129,6 +135,9 @@ For quick evaluation, the application auto-seeds standard demonstration accounts
 | 👤 **Face-Enrolled Student** | `nihar` | `nihar123` | `/dashboard` |
 
 *(The login screen includes **1-Click Auto-Fill** buttons for each role).*
+
+> [!NOTE]
+> **Teacher Registration Rule**: When registering as a Teacher via `/register`, you must use an email ending with `@teach.com` (e.g., `professor.davis@teach.com`). Student accounts accept any valid email domain.
 
 ---
 
@@ -193,7 +202,7 @@ Face_recognition/
 │   ├── index.html             # Futuristic landing page & telemetry
 │   ├── login.html             # Multi-role authentication & password toggle
 │   ├── mark_attendance.html   # Sci-Fi biometric camera scanner HUD
-│   └── register.html          # Dual-mode face enrollment (Webcam/Upload)
+│   ├── register.html          # Dual-mode face enrollment with Email & Role selector
 ├── instance/
 │   └── users.db               # SQLite database (auto-created)
 ├── app.py                     # Flask application, ML pipeline & RBAC logic

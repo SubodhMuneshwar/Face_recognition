@@ -22,6 +22,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), default="", nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default="student", nullable=False)  # 'student', 'teacher', 'admin'
 
@@ -277,14 +278,36 @@ def login():
 def register():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
         password = request.form.get("password", "").strip()
+        role = request.form.get("role", "student").strip().lower()
 
-        if not username or not password:
-            flash("Username and password are required.", "error")
+        if not username or not email or not password:
+            flash("Username, email, and password are all required.", "error")
             return redirect(url_for("register"))
+
+        # Basic email format validation
+        import re
+        if not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email):
+            flash("Please enter a valid email address.", "error")
+            return redirect(url_for("register"))
+
+        # Only allow 'student' or 'teacher' roles from public registration (admin is admin-only)
+        if role not in ["student", "teacher"]:
+            role = "student"
+
+        # Teacher role gate: enforce @teach.com email domain
+        if role == "teacher":
+            if not email.lower().endswith("@teach.com"):
+                flash("Teacher accounts require an institutional email ending with @teach.com. Please use a valid @teach.com email or register as a Student.", "error")
+                return redirect(url_for("register"))
 
         if User.query.filter_by(username=username).first():
             flash("Username already exists. Please choose a different one.", "error")
+            return redirect(url_for("register"))
+
+        if User.query.filter_by(email=email).first():
+            flash("An account with this email already exists. Please use a different email or sign in.", "error")
             return redirect(url_for("register"))
 
         # Strictly enforce Face Biometric Capture (required)
@@ -337,7 +360,7 @@ def register():
             return redirect(url_for("register"))
 
         # Create user account ONLY after face biometric is successfully verified
-        new_user = User(username=username, role="student")
+        new_user = User(username=username, email=email, role=role)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
@@ -345,7 +368,8 @@ def register():
         # Update in-memory face encodings
         load_known_faces()
 
-        flash(f"Registration successful! Biometric profile enrolled for {username}. Please sign in.", "success")
+        role_label = "Teacher / Manager" if role == "teacher" else "Student / Employee"
+        flash(f"Registration successful! {role_label} profile enrolled for {username}. Please sign in.", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -629,7 +653,7 @@ def serve_face_image(filename):
 def init_db_and_seed():
     with app.app_context():
         db.create_all()
-        # Automatic SQLite column migration for 'role'
+        # Automatic SQLite column migration for 'role' and 'email'
         try:
             engine = db.engine
             with engine.connect() as conn:
@@ -639,50 +663,66 @@ def init_db_and_seed():
                     conn.exec_driver_sql("ALTER TABLE user ADD COLUMN role VARCHAR(20) DEFAULT 'student'")
                     conn.commit()
                     print("[Database] Successfully added 'role' column to 'user' table.")
+                if "email" not in col_names:
+                    conn.exec_driver_sql("ALTER TABLE user ADD COLUMN email VARCHAR(120) DEFAULT ''")
+                    conn.commit()
+                    print("[Database] Successfully added 'email' column to 'user' table.")
         except Exception as e:
             print(f"[Database Migration Notice] {e}")
 
         # Seed admin / admin123
         admin = User.query.filter_by(username="admin").first()
         if not admin:
-            admin = User(username="admin", role="admin")
+            admin = User(username="admin", email="admin@visionpass.com", role="admin")
             admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
             print("[Database] Seeded Master Administrator: 'admin' / 'admin123'")
-        elif admin.role != "admin":
-            admin.role = "admin"
+        else:
+            if admin.role != "admin":
+                admin.role = "admin"
+            if not admin.email:
+                admin.email = "admin@visionpass.com"
             db.session.commit()
 
         # Seed teacher / teacher123
         teacher = User.query.filter_by(username="teacher").first()
         if not teacher:
-            teacher = User(username="teacher", role="teacher")
+            teacher = User(username="teacher", email="teacher@teach.com", role="teacher")
             teacher.set_password("teacher123")
             db.session.add(teacher)
             db.session.commit()
             print("[Database] Seeded Teacher/Manager: 'teacher' / 'teacher123'")
-        elif teacher.role != "teacher":
-            teacher.role = "teacher"
+        else:
+            if teacher.role != "teacher":
+                teacher.role = "teacher"
+            if not teacher.email:
+                teacher.email = "teacher@teach.com"
             db.session.commit()
 
         # Seed student / student123
         student = User.query.filter_by(username="student").first()
         if not student:
-            student = User(username="student", role="student")
+            student = User(username="student", email="student@visionpass.com", role="student")
             student.set_password("student123")
             db.session.add(student)
             db.session.commit()
             print("[Database] Seeded Student: 'student' / 'student123'")
+        elif not student.email:
+            student.email = "student@visionpass.com"
+            db.session.commit()
 
         # Seed nihar
         nihar = User.query.filter_by(username="nihar").first()
         if not nihar:
-            nihar = User(username="nihar", role="student")
+            nihar = User(username="nihar", email="nihar@visionpass.com", role="student")
             nihar.set_password("nihar123")
             db.session.add(nihar)
             db.session.commit()
             print("[Database] Seeded Student: 'nihar' / 'nihar123'")
+        elif not nihar.email:
+            nihar.email = "nihar@visionpass.com"
+            db.session.commit()
 
 init_db_and_seed()
 
