@@ -165,58 +165,71 @@ def register():
             flash("Username already exists. Please choose a different one.", "error")
             return redirect(url_for("register"))
 
-        # Create user account
-        new_user = User(username=username)
-        new_user.set_password(password)
-        db.session.add(new_user)
-        db.session.commit()
-
-        # Handle face enrollment photo (either uploaded file or webcam snapshot)
+        # Strictly enforce Face Biometric Capture (required)
         file = request.files.get("face_image")
         webcam_data = request.form.get("webcam_face_data")
-        photo_saved = False
 
-        if webcam_data and "base64," in webcam_data:
-            try:
+        has_webcam = bool(webcam_data and "base64," in webcam_data)
+        has_file = bool(file and file.filename != "")
+
+        if not has_webcam and not has_file:
+            flash("Face Biometric Capture is required. Please capture a camera snapshot or upload a face photo.", "error")
+            return redirect(url_for("register"))
+
+        # Process and verify the face biometric data BEFORE creating the user
+        target_path = None
+        face_verified = False
+
+        try:
+            if has_webcam:
                 base64_str = webcam_data.split("base64,")[1]
                 img_bytes = base64.b64decode(base64_str)
                 target_filename = f"{secure_filename(username)}.jpg"
                 target_path = os.path.join(images_dir, target_filename)
                 with open(target_path, "wb") as f:
                     f.write(img_bytes)
-                loaded_img = face_recognition.load_image_file(target_path)
-                encs = face_recognition.face_encodings(loaded_img)
-                if len(encs) > 0:
-                    photo_saved = True
-                    load_known_faces()
-                else:
-                    flash("Account created, but no face was detected in your camera snapshot.", "warning")
-            except Exception as e:
-                print(f"Error checking camera snapshot: {e}")
 
-        elif file and file.filename != "":
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext in ['.jpg', '.jpeg', '.png', '.webp']:
+            elif has_file:
+                ext = os.path.splitext(file.filename)[1].lower()
+                if ext not in ['.jpg', '.jpeg', '.png', '.webp']:
+                    flash("Invalid image format. Please upload JPG, PNG, or WEBP.", "error")
+                    return redirect(url_for("register"))
                 target_filename = f"{secure_filename(username)}{ext}"
                 target_path = os.path.join(images_dir, target_filename)
                 file.save(target_path)
-                # Verify that a face can be detected in the photo
+
+            # Detect face in the captured/uploaded image
+            loaded_img = face_recognition.load_image_file(target_path)
+            encs = face_recognition.face_encodings(loaded_img)
+
+            if len(encs) > 0:
+                face_verified = True
+            else:
+                # Remove file if no face detected
+                if target_path and os.path.exists(target_path):
+                    os.remove(target_path)
+                flash("Face verification failed: No detectable face found in the capture. A clear face photo is required to enroll.", "error")
+                return redirect(url_for("register"))
+
+        except Exception as e:
+            if target_path and os.path.exists(target_path):
                 try:
-                    loaded_img = face_recognition.load_image_file(target_path)
-                    encs = face_recognition.face_encodings(loaded_img)
-                    if len(encs) > 0:
-                        photo_saved = True
-                        load_known_faces()  # Refresh in-memory embeddings
-                    else:
-                        flash("Account created, but no face was detected in the uploaded photo. You can upload a clearer photo later.", "warning")
-                except Exception as e:
-                    print(f"Error checking face photo: {e}")
+                    os.remove(target_path)
+                except Exception:
+                    pass
+            flash(f"Biometric processing error: {str(e)}", "error")
+            return redirect(url_for("register"))
 
-        if photo_saved:
-            flash(f"Registration successful! Biometric profile enrolled for {username}. Please sign in.", "success")
-        else:
-            flash("Registration successful. Please sign in.", "success")
+        # Create user account ONLY after face biometric is successfully verified
+        new_user = User(username=username)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
 
+        # Update in-memory face encodings
+        load_known_faces()
+
+        flash(f"Registration successful! Biometric profile enrolled for {username}. Please sign in.", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")

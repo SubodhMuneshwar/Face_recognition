@@ -65,7 +65,16 @@
         </div>
 
         <!-- Enrollment Tabs -->
-        <label style="margin-top: 1.25rem;">Face Biometric Capture</label>
+        <label style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>Face Biometric Capture</span>
+          <span style="color: var(--accent-rose); font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">* Required</span>
+        </label>
+
+        <!-- Biometric Required Warning Alert (Hidden by default) -->
+        <div id="biometricRequiredAlert" class="alert alert-error" style="display: none; margin-bottom: 0.85rem; font-size: 0.85rem;">
+          ⚠️ Face Biometric Capture is required! Please capture a snapshot or upload a photo.
+        </div>
+
         <div class="tab-container">
           <button type="button" class="tab-btn active" id="tabWebcamBtn">📸 Live Camera Snapshot</button>
           <button type="button" class="tab-btn" id="tabUploadBtn">📁 Upload Photo</button>
@@ -324,6 +333,25 @@
       fileInput.value = '';
       filePreview.style.display = 'none';
       sounds.playClick();
+    });
+
+    // Form Submission Validation for Required Face Biometric Capture
+    const regForm = document.getElementById('regForm');
+    const biometricAlert = document.getElementById('biometricRequiredAlert');
+
+    regForm.addEventListener('submit', (e) => {
+      const hasWebcamSnapshot = hiddenData.value && hiddenData.value.trim() !== '';
+      const hasUploadedFile = fileInput.files && fileInput.files.length > 0;
+
+      if (!hasWebcamSnapshot && !hasUploadedFile) {
+        e.preventDefault();
+        sounds.playError();
+        biometricAlert.style.display = 'flex';
+        biometricAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+
+      biometricAlert.style.display = 'none';
     });
 
     // Sound toggle
